@@ -2,47 +2,6 @@ use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Employee {
-    pub id: String,
-    pub name: String,
-    pub email: String,
-    pub position: String,
-    pub department: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub salary: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub phone: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub address: Option<String>,
-    pub hire_date: DateTime<Utc>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub manager_id: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EmployeePublic {
-    pub id: String,
-    pub name: String,
-    pub email: String,
-    pub position: String,
-    pub department: String,
-    pub hire_date: DateTime<Utc>,
-}
-
-impl From<Employee> for EmployeePublic {
-    fn from(emp: Employee) -> Self {
-        Self {
-            id: emp.id,
-            name: emp.name,
-            email: emp.email,
-            position: emp.position,
-            department: emp.department,
-            hire_date: emp.hire_date,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: String,
     pub name: String,
@@ -82,8 +41,8 @@ pub struct CreateUserRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Feedback {
     pub id: String,
-    pub employee_id: String,
-    pub from_user_id: String,
+    pub user_id: String, // User ID the feedback is for
+    pub from_user_id: String, // User ID who created the feedback
     pub content: String,
     pub polished_content: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -91,7 +50,7 @@ pub struct Feedback {
 
 #[derive(Debug, Deserialize)]
 pub struct CreateFeedbackRequest {
-    pub employee_id: String,
+    pub user_id: String, // User ID the feedback is for
     pub content: String,
     pub polish: Option<bool>,
 }
@@ -99,7 +58,7 @@ pub struct CreateFeedbackRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbsenceRequest {
     pub id: String,
-    pub employee_id: String,
+    pub user_id: String, // User ID who requested the absence
     pub start_date: DateTime<Utc>,
     pub end_date: DateTime<Utc>,
     pub reason: String,
@@ -128,14 +87,10 @@ pub struct UpdateAbsenceStatusRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateEmployeeRequest {
+pub struct UpdateUserRequest {
     pub name: Option<String>,
     pub email: Option<String>,
-    pub position: Option<String>,
-    pub department: Option<String>,
-    pub salary: Option<f64>,
-    pub phone: Option<String>,
-    pub address: Option<String>,
+    pub role: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

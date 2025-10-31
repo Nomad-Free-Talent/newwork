@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { api } from '../services/api'
 import '../App.css'
 
-export default function EmployeeList() {
-  const [employees, setEmployees] = useState([])
+export default function UserManagement() {
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -21,15 +21,19 @@ export default function EmployeeList() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    fetchEmployees()
-  }, [])
+    if (user?.role !== 'manager') {
+      navigate('/data-items')
+      return
+    }
+    fetchUsers()
+  }, [user])
 
-  const fetchEmployees = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await api.get('/employees')
-      setEmployees(response.data)
+      const response = await api.get('/users')
+      setUsers(response.data)
     } catch (err) {
-      setError('Failed to load employees')
+      setError('Failed to load users')
     } finally {
       setLoading(false)
     }
@@ -53,6 +57,7 @@ export default function EmployeeList() {
       setSuccess('User created successfully!')
       setFormData({ name: '', email: '', password: '', role: 'employee' })
       setShowUserForm(false)
+      fetchUsers()
     } catch (err) {
       if (err.response?.status === 409) {
         setError('User with this email already exists')
@@ -68,10 +73,27 @@ export default function EmployeeList() {
     return <div className="loading">Loading...</div>
   }
 
+  if (user?.role !== 'manager') {
+    return null
+  }
+
+  const getRoleBadgeClass = (role) => {
+    switch (role) {
+      case 'manager':
+        return { bg: '#d4edda', color: '#155724' }
+      case 'coworker':
+        return { bg: '#cfe2ff', color: '#084298' }
+      case 'employee':
+        return { bg: '#fff3cd', color: '#856404' }
+      default:
+        return { bg: '#e0e0e0', color: '#333' }
+    }
+  }
+
   return (
     <div className="app-container">
       <div className="navbar">
-        <h2>NEWWORK Employee Directory</h2>
+        <h2>NEWWORK User Management</h2>
         <div className="navbar-actions">
           <span>Logged in as: {user?.email} ({user?.role})</span>
           <button className="btn-link" onClick={() => navigate('/absences')}>
@@ -91,8 +113,8 @@ export default function EmployeeList() {
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h1>Employee Directory</h1>
-          {user?.role === 'manager' && !showUserForm && (
+          <h1>User Management</h1>
+          {!showUserForm && (
             <button className="btn btn-primary" onClick={() => setShowUserForm(true)}>
               Add New User
             </button>
@@ -173,21 +195,67 @@ export default function EmployeeList() {
           </form>
         )}
 
-        <h2 style={{ marginBottom: '1rem' }}>Employees</h2>
-        <div className="grid">
-          {employees.map((employee) => (
-            <div
-              key={employee.id}
-              className="employee-card"
-              onClick={() => navigate(`/employees/${employee.id}`)}
-            >
-              <h3>{employee.name}</h3>
-              <p><strong>Position:</strong> {employee.position}</p>
-              <p><strong>Department:</strong> {employee.department}</p>
-              <p><strong>Email:</strong> {employee.email}</p>
-            </div>
-          ))}
-        </div>
+        {users.length === 0 ? (
+          <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
+            No users found. Click "Add New User" to create one.
+          </p>
+        ) : (
+          <div className="grid">
+            {users.map((u) => {
+              const badge = getRoleBadgeClass(u.role)
+              
+              return (
+                <div
+                  key={u.id}
+                  style={{
+                    background: 'white',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid #e0e0e0',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ margin: '0 0 0.5rem 0', color: '#667eea' }}>
+                        {u.name}
+                      </h3>
+                      <span
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          background: badge.bg,
+                          color: badge.color,
+                          display: 'inline-block',
+                          marginBottom: '0.5rem',
+                          textTransform: 'capitalize',
+                        }}
+                      >
+                        {u.role}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="info-row">
+                    <div className="info-label">Email:</div>
+                    <div className="info-value">
+                      {u.email}
+                    </div>
+                  </div>
+
+                  <div className="info-row">
+                    <div className="info-label">User ID:</div>
+                    <div className="info-value" style={{ fontSize: '0.875rem', color: '#666' }}>
+                      {u.id}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

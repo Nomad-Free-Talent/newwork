@@ -1,8 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
-import EmployeeList from './pages/EmployeeList'
-import EmployeeProfile from './pages/EmployeeProfile'
+import UserManagement from './pages/EmployeeList'
 import AbsenceRequest from './pages/AbsenceRequest'
 import DataItems from './pages/DataItems'
 import './App.css'
@@ -40,7 +39,7 @@ function RoleBasedRedirect() {
 
   // Redirect based on role
   if (user.role === 'manager') {
-    return <Navigate to="/employees" />
+    return <Navigate to="/users" />
   } else if (user.role === 'employee') {
     return <Navigate to="/absences" />
   } else {
@@ -53,21 +52,11 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route
-        path="/employees"
+        path="/users"
         element={
           <PrivateRoute>
             <ManagerOnlyRoute>
-              <EmployeeList />
-            </ManagerOnlyRoute>
-          </PrivateRoute>
-        }
-      />
-      <Route
-        path="/employees/:id"
-        element={
-          <PrivateRoute>
-            <ManagerOnlyRoute>
-              <EmployeeProfile />
+              <UserManagement />
             </ManagerOnlyRoute>
           </PrivateRoute>
         }

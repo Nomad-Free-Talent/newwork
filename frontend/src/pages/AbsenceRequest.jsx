@@ -9,7 +9,7 @@ export default function AbsenceRequest() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [absences, setAbsences] = useState([])
-  const [employees, setEmployees] = useState([])
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -34,16 +34,16 @@ export default function AbsenceRequest() {
     
     fetchAbsences()
     if (isManager) {
-      fetchEmployees()
+      fetchUsers()
     }
   }, [user])
 
-  const fetchEmployees = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await api.get('/employees')
-      setEmployees(response.data)
+      const response = await api.get('/users')
+      setUsers(response.data)
     } catch (err) {
-      console.error('Failed to load employees:', err)
+      console.error('Failed to load users:', err)
     }
   }
 
@@ -116,9 +116,9 @@ export default function AbsenceRequest() {
     }
   }
 
-  const getEmployeeName = (employeeId) => {
-    const employee = employees.find(emp => emp.id === employeeId)
-    return employee ? employee.name : `Employee ${employeeId}`
+  const getUserName = (userId) => {
+    const user = users.find(u => u.id === userId)
+    return user ? user.name : `User ${userId}`
   }
 
   if (loading) {
@@ -131,8 +131,8 @@ export default function AbsenceRequest() {
         <div className="navbar">
           <h2>Absence Requests</h2>
           <div className="navbar-actions">
-            <button className="btn-link" onClick={() => navigate('/employees')}>
-              Employee Directory
+            <button className="btn-link" onClick={() => navigate('/users')}>
+              User Management
             </button>
             <button className="btn-link" onClick={() => navigate('/data-items')}>
               Data Items
@@ -233,8 +233,8 @@ export default function AbsenceRequest() {
                 <div key={absence.id} style={{ padding: '1rem', marginBottom: '1rem', background: '#f8f9fa', borderRadius: '8px' }}>
                   {isManager && (
                     <div className="info-row">
-                      <div className="info-label">Employee:</div>
-                      <div className="info-value">{getEmployeeName(absence.employee_id)}</div>
+                      <div className="info-label">User:</div>
+                      <div className="info-value">{getUserName(absence.user_id)}</div>
                     </div>
                   )}
                   <div className="info-row">

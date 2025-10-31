@@ -73,7 +73,7 @@ export default function EmployeeProfile() {
 
     try {
       await api.post('/feedback', {
-        employee_id: id,
+        user_id: id,
         content: feedback,
         polish: polishFeedback,
       })

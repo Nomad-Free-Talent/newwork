@@ -43,10 +43,10 @@ pub async fn login(
     }))
 }
 
-pub async fn get_employee(
+pub async fn get_user(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path(employee_id): Path<String>,
+    Path(user_id): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
     let auth_user = AuthenticatedUser {
         id: claims.sub,
@@ -54,24 +54,30 @@ pub async fn get_employee(
         role: claims.role.clone(),
     };
 
-    // Only managers can view employee profiles
+    // Only managers can view user profiles
     if !auth_user.is_manager() {
         return Err(StatusCode::FORBIDDEN);
     }
 
-    let employees_db = state.employees.read().await;
-    let employee = employees_db
-        .get(&employee_id)
+    let users = state.users.read().await;
+    let user = users
+        .values()
+        .find(|u| u.id == user_id)
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    Ok(Json(json!(employee)))
+    Ok(Json(json!(UserInfo {
+        id: user.id.clone(),
+        name: user.name.clone(),
+        email: user.email.clone(),
+        role: user.role.clone(),
+    })))
 }
 
-pub async fn update_employee(
+pub async fn update_user(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path(employee_id): Path<String>,
-    Json(update_req): Json<UpdateEmployeeRequest>,
+    Path(user_id): Path<String>,
+    Json(update_req): Json<UpdateUserRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let auth_user = AuthenticatedUser {
         id: claims.sub,
@@ -79,58 +85,56 @@ pub async fn update_employee(
         role: claims.role.clone(),
     };
 
-    // Only managers can edit employee profiles
+    // Only managers can edit users
     if !auth_user.is_manager() {
         return Err(StatusCode::FORBIDDEN);
     }
 
-    let mut employees = state.employees.write().await;
-    let employee = employees
-        .get_mut(&employee_id)
+    let mut users = state.users.write().await;
+    
+    // Find user by ID (need to search through all entries since HashMap is keyed by email)
+    let (old_email, mut user_to_update) = users
+        .iter()
+        .find(|(_, u)| u.id == user_id)
+        .map(|(email, user)| (email.clone(), user.clone()))
         .ok_or(StatusCode::NOT_FOUND)?;
 
+    // Update fields
     if let Some(name) = update_req.name {
-        employee.name = name;
+        user_to_update.name = name;
     }
-    if let Some(email) = update_req.email {
-        employee.email = email;
+    if let Some(email) = &update_req.email {
+        user_to_update.email = email.clone();
     }
-    if let Some(position) = update_req.position {
-        employee.position = position;
-    }
-    if let Some(department) = update_req.department {
-        employee.department = department;
-    }
-    if let Some(salary) = update_req.salary {
-        employee.salary = Some(salary);
-    }
-    if let Some(phone) = update_req.phone {
-        employee.phone = Some(phone);
-    }
-    if let Some(address) = update_req.address {
-        employee.address = Some(address);
+    if let Some(role) = &update_req.role {
+        if !["manager", "employee", "coworker"].contains(&role.as_str()) {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+        user_to_update.role = role.clone();
     }
 
-    Ok(Json(json!(employee)))
-}
-
-pub async fn list_employees(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-) -> Result<Json<Value>, StatusCode> {
-    let auth_user = AuthenticatedUser {
-        id: claims.sub,
-        email: claims.email.clone(),
-        role: claims.role.clone(),
-    };
-
-    // Only managers can view employee directory
-    if !auth_user.is_manager() {
-        return Err(StatusCode::FORBIDDEN);
+    // If email changed, update the HashMap key
+    if let Some(new_email) = update_req.email {
+        if old_email != new_email {
+            users.remove(&old_email);
+        }
+        users.insert(new_email.clone(), user_to_update.clone());
+        Ok(Json(json!(UserInfo {
+            id: user_to_update.id.clone(),
+            name: user_to_update.name.clone(),
+            email: user_to_update.email.clone(),
+            role: user_to_update.role.clone(),
+        })))
+    } else {
+        // Email didn't change, just update in place
+        users.insert(old_email.clone(), user_to_update.clone());
+        Ok(Json(json!(UserInfo {
+            id: user_to_update.id.clone(),
+            name: user_to_update.name.clone(),
+            email: user_to_update.email.clone(),
+            role: user_to_update.role.clone(),
+        })))
     }
-
-    let employees = state.employees.read().await;
-    Ok(Json(json!(employees.values().collect::<Vec<_>>())))
 }
 
 pub async fn create_feedback(
@@ -159,7 +163,7 @@ pub async fn create_feedback(
 
     let feedback = Feedback {
         id: Uuid::new_v4().to_string(),
-        employee_id: feedback_req.employee_id,
+        user_id: feedback_req.user_id,
         from_user_id: claims.sub,
         content: feedback_req.content,
         polished_content: if feedback_req.polish.unwrap_or(false) {
@@ -232,7 +236,7 @@ pub async fn create_absence_request(
     Json(absence_req): Json<CreateAbsenceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let auth_user = AuthenticatedUser {
-        id: claims.sub,
+        id: claims.sub.clone(),
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
@@ -242,18 +246,10 @@ pub async fn create_absence_request(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    // Find employee by matching email
-    let employees = state.employees.read().await;
-    let employee = employees
-        .values()
-        .find(|e| e.email == claims.email)
-        .ok_or(StatusCode::BAD_REQUEST)?;
-    let employee_id = employee.id.clone();
-    drop(employees);
-
+    let user_id = claims.sub.clone();
     let absence = AbsenceRequest {
         id: Uuid::new_v4().to_string(),
-        employee_id,
+        user_id,
         start_date: absence_req.start_date,
         end_date: absence_req.end_date,
         reason: absence_req.reason,
@@ -271,8 +267,9 @@ pub async fn get_my_absences(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Value>, StatusCode> {
+    let user_id = claims.sub.clone();
     let auth_user = AuthenticatedUser {
-        id: claims.sub,
+        id: user_id.clone(),
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
@@ -282,19 +279,10 @@ pub async fn get_my_absences(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    // Find employee by matching email
-    let employees = state.employees.read().await;
-    let employee = employees
-        .values()
-        .find(|e| e.email == claims.email)
-        .ok_or(StatusCode::BAD_REQUEST)?;
-    let employee_id = employee.id.clone();
-    drop(employees);
-
     let absences = state.absences.read().await;
     let my_absences: Vec<&AbsenceRequest> = absences
         .iter()
-        .filter(|a| a.employee_id == employee_id)
+        .filter(|a| a.user_id == user_id)
         .collect();
 
     Ok(Json(json!(my_absences)))
@@ -360,19 +348,19 @@ pub async fn list_users(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Value>, StatusCode> {
-    // Managers and co-workers can list users (co-workers need it to see owner info)
+    // Only managers can view user management
     let auth_user = AuthenticatedUser {
         id: claims.sub,
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
 
-    if !auth_user.is_manager() && !auth_user.is_coworker() {
+    if !auth_user.is_manager() {
         return Err(StatusCode::FORBIDDEN);
     }
 
     let users = state.users.read().await;
-    // Return only user info (not password hashes)
+    // Return only user info (not password hashes) - all users (managers, employees, co-workers)
     let user_info: Vec<UserInfo> = users
         .values()
         .map(|u| UserInfo {
