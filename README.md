@@ -139,6 +139,7 @@ All API endpoints are prefixed with `/api`.
 ### Data Storage
 
 - **In-Memory Storage**: For this demo, data is stored in memory using `Arc<RwLock<HashMap>>` for thread-safe access.
+- **Migration System**: Initial data seeding is handled by migrations (`src/migrations.rs`). Migrations run automatically on server startup and are idempotent (won't duplicate data if run multiple times).
 - **Easy Database Migration**: The storage abstraction makes it straightforward to replace with a real database (PostgreSQL, MongoDB, etc.) without changing business logic.
 
 ### Frontend Architecture

@@ -1,6 +1,7 @@
 mod auth;
 mod handlers;
 mod models;
+mod migrations;
 mod routes;
 mod state;
 
@@ -12,6 +13,7 @@ use axum::{
 use tower_http::cors::{CorsLayer, Any};
 use tower_http::trace::TraceLayer;
 
+use crate::migrations::run_migrations;
 use crate::state::AppState;
 
 #[tokio::main]
@@ -19,6 +21,9 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let state = AppState::new();
+    
+    // Run migrations to seed initial data
+    run_migrations(&state).await;
 
     let app = Router::new()
         .route("/health", get(health_check))
