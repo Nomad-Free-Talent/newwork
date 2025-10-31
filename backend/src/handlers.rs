@@ -428,6 +428,41 @@ pub async fn create_user(
     })))
 }
 
+pub async fn delete_user(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(user_id): Path<String>,
+) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub.clone(),
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Only managers can delete users
+    if !auth_user.is_manager() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Prevent self-deletion
+    if claims.sub == user_id {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let mut users = state.users.write().await;
+    
+    // Find user by ID and remove it
+    let email_to_remove = users
+        .iter()
+        .find(|(_, u)| u.id == user_id)
+        .map(|(email, _)| email.clone())
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    users.remove(&email_to_remove);
+
+    Ok(Json(json!({ "message": "User deleted successfully" })))
+}
+
 // Data Items handlers with access control
 
 pub async fn list_data_items(

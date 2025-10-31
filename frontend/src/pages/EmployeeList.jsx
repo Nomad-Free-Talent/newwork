@@ -69,6 +69,32 @@ export default function UserManagement() {
     }
   }
 
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
+      return
+    }
+
+    if (userId === user?.id) {
+      setError('You cannot delete your own account')
+      return
+    }
+
+    setError('')
+    setSuccess('')
+
+    try {
+      await api.delete(`/users/${userId}`)
+      setSuccess('User deleted successfully!')
+      fetchUsers()
+    } catch (err) {
+      if (err.response?.status === 400) {
+        setError('Cannot delete this user')
+      } else {
+        setError(err.response?.data?.error || 'Failed to delete user')
+      }
+    }
+  }
+
   if (loading) {
     return <div className="loading">Loading...</div>
   }
@@ -236,6 +262,27 @@ export default function UserManagement() {
                         {u.role}
                       </span>
                     </div>
+                    {u.id !== user?.id && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteUser(u.id, u.name)
+                        }}
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          background: '#dc3545',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                        }}
+                        title="Delete user"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
 
                   <div className="info-row">
