@@ -17,8 +17,47 @@ export default function UserManagement() {
     role: 'employee',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [sortBy, setSortBy] = useState('name')
+  const [sortOrder, setSortOrder] = useState('asc')
+  const [filterRole, setFilterRole] = useState('all')
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+
+  // Sorting algorithm for users
+  const sortUsers = (usersList) => {
+    const filtered = filterRole === 'all' 
+      ? usersList 
+      : usersList.filter(u => u.role === filterRole)
+    
+    const sorted = [...filtered].sort((a, b) => {
+      let aVal, bVal
+
+      switch (sortBy) {
+        case 'name':
+          aVal = a.name?.toLowerCase() || ''
+          bVal = b.name?.toLowerCase() || ''
+          break
+        case 'email':
+          aVal = a.email?.toLowerCase() || ''
+          bVal = b.email?.toLowerCase() || ''
+          break
+        case 'role':
+          aVal = a.role?.toLowerCase() || ''
+          bVal = b.role?.toLowerCase() || ''
+          break
+        default:
+          aVal = a.name?.toLowerCase() || ''
+          bVal = b.name?.toLowerCase() || ''
+      }
+
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+      }
+    })
+    return sorted
+  }
 
   useEffect(() => {
     if (user?.role !== 'manager') {
@@ -27,6 +66,7 @@ export default function UserManagement() {
     }
     fetchUsers()
   }, [user])
+
 
   const fetchUsers = async () => {
     try {
@@ -106,13 +146,13 @@ export default function UserManagement() {
   const getRoleBadgeClass = (role) => {
     switch (role) {
       case 'manager':
-        return { bg: '#d4edda', color: '#155724' }
+        return 'badge badge-manager'
       case 'coworker':
-        return { bg: '#cfe2ff', color: '#084298' }
+        return 'badge badge-coworker'
       case 'employee':
-        return { bg: '#fff3cd', color: '#856404' }
+        return 'badge badge-employee'
       default:
-        return { bg: '#e0e0e0', color: '#333' }
+        return 'badge'
     }
   }
 
@@ -148,7 +188,7 @@ export default function UserManagement() {
         </div>
 
         {user?.role === 'manager' && showUserForm && (
-          <form onSubmit={handleCreateUser} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '8px' }}>
+          <form onSubmit={handleCreateUser} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#fafafa', border: '1px solid #e0e0e0', borderRadius: '2px' }}>
             <h3>Create New User</h3>
             
             <div className="form-group">
@@ -221,44 +261,51 @@ export default function UserManagement() {
           </form>
         )}
 
+        {/* Sort and Filter Controls */}
+        {users.length > 0 && (
+          <div className="sort-controls">
+            <label>Filter by role:</label>
+            <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+              <option value="all">All Roles</option>
+              <option value="manager">Managers</option>
+              <option value="employee">Employees</option>
+              <option value="coworker">Co-workers</option>
+            </select>
+            <label>Sort by:</label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="name">Name</option>
+              <option value="email">Email</option>
+              <option value="role">Role</option>
+            </select>
+            <label>Order:</label>
+            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+              <option value="asc">Ascending</option>
+              <option value="desc">Descending</option>
+            </select>
+          </div>
+        )}
+
         {users.length === 0 ? (
-          <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
-            No users found. Click "Add New User" to create one.
-          </p>
+          <div className="empty-state">
+            <h3>No Users</h3>
+            <p>Click "Add New User" to create one.</p>
+          </div>
         ) : (
           <div className="grid">
-            {users.map((u) => {
-              const badge = getRoleBadgeClass(u.role)
+            {sortUsers(users).map((u) => {
+              const badgeClass = getRoleBadgeClass(u.role)
               
               return (
                 <div
                   key={u.id}
-                  style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '1.5rem',
-                    boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
-                    border: '1px solid #e0e0e0',
-                  }}
+                  className="employee-card"
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: '0 0 0.5rem 0', color: '#667eea' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 className="text-truncate" style={{ margin: '0 0 0.5rem 0' }}>
                         {u.name}
                       </h3>
-                      <span
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          background: badge.bg,
-                          color: badge.color,
-                          display: 'inline-block',
-                          marginBottom: '0.5rem',
-                          textTransform: 'capitalize',
-                        }}
-                      >
+                      <span className={badgeClass}>
                         {u.role}
                       </span>
                     </div>
@@ -268,16 +315,8 @@ export default function UserManagement() {
                           e.stopPropagation()
                           handleDeleteUser(u.id, u.name)
                         }}
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          background: '#dc3545',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem',
-                          fontWeight: '500',
-                        }}
+                        className="btn btn-danger"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
                         title="Delete user"
                       >
                         Delete
@@ -287,14 +326,14 @@ export default function UserManagement() {
 
                   <div className="info-row">
                     <div className="info-label">Email:</div>
-                    <div className="info-value">
+                    <div className="info-value text-truncate">
                       {u.email}
                     </div>
                   </div>
 
                   <div className="info-row">
                     <div className="info-label">User ID:</div>
-                    <div className="info-value" style={{ fontSize: '0.875rem', color: '#666' }}>
+                    <div className="info-value text-truncate" style={{ fontSize: '0.875rem', color: '#666' }}>
                       {u.id}
                     </div>
                   </div>

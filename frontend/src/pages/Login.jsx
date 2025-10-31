@@ -30,12 +30,12 @@ export default function Login() {
 
   return (
     <div className="app-container">
-      <div style={{ maxWidth: '400px', margin: '5rem auto' }}>
+      <div style={{ maxWidth: '400px', margin: '5rem auto', width: '100%' }}>
         <div className="card">
-          <h1 style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             NEWWORK
           </h1>
-          <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <h2 style={{ textAlign: 'center', marginBottom: '1.5rem', fontSize: '1.25rem', fontWeight: '400', color: '#666' }}>
             Employee Portal
           </h2>
           
@@ -51,6 +51,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="manager@newwork.com"
+                autoComplete="email"
               />
             </div>
             
@@ -63,25 +64,26 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="password123"
+                autoComplete="current-password"
               />
             </div>
             
             <button
               type="submit"
               className="btn btn-primary"
-              style={{ width: '100%' }}
+              style={{ width: '100%', marginTop: '0.5rem' }}
               disabled={loading}
             >
               {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
           
-          <div style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#666' }}>
-            <p><strong>Demo Accounts:</strong></p>
-            <p>Manager: manager@newwork.com</p>
-            <p>Employee: employee@newwork.com</p>
-            <p>Co-worker: coworker@newwork.com</p>
-            <p>Password: password123</p>
+          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e0e0e0', fontSize: '0.875rem', color: '#666' }}>
+            <p style={{ fontWeight: '500', marginBottom: '0.5rem', color: '#333' }}>Demo Accounts:</p>
+            <p style={{ margin: '0.25rem 0', wordBreak: 'break-word' }}>Manager: manager@newwork.com</p>
+            <p style={{ margin: '0.25rem 0', wordBreak: 'break-word' }}>Employee: employee@newwork.com</p>
+            <p style={{ margin: '0.25rem 0', wordBreak: 'break-word' }}>Co-worker: coworker@newwork.com</p>
+            <p style={{ margin: '0.25rem 0' }}>Password: password123</p>
           </div>
         </div>
       </div>

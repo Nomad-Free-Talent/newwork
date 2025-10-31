@@ -21,10 +21,51 @@ export default function AbsenceRequest() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [updating, setUpdating] = useState(null)
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [filterStatus, setFilterStatus] = useState('all')
 
   const isManager = user?.role === 'manager'
   const isEmployee = user?.role === 'employee'
   const isCoworker = user?.role === 'coworker'
+
+  // Sorting algorithm for absences
+  const sortAbsences = (absencesList) => {
+    const filtered = filterStatus === 'all' 
+      ? absencesList 
+      : absencesList.filter(a => a.status === filterStatus)
+    
+    const sorted = [...filtered].sort((a, b) => {
+      let aVal, bVal
+
+      switch (sortBy) {
+        case 'start_date':
+          aVal = new Date(a.start_date).getTime()
+          bVal = new Date(b.start_date).getTime()
+          break
+        case 'end_date':
+          aVal = new Date(a.end_date).getTime()
+          bVal = new Date(b.end_date).getTime()
+          break
+        case 'status':
+          aVal = a.status?.toLowerCase() || ''
+          bVal = b.status?.toLowerCase() || ''
+          break
+        case 'created_at':
+        default:
+          aVal = new Date(a.created_at).getTime()
+          bVal = new Date(b.created_at).getTime()
+          break
+      }
+
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+      }
+    })
+    return sorted
+  }
 
   useEffect(() => {
     if (isCoworker) {
@@ -37,6 +78,7 @@ export default function AbsenceRequest() {
       fetchUsers()
     }
   }, [user])
+
 
   const fetchUsers = async () => {
     try {
@@ -183,7 +225,7 @@ export default function AbsenceRequest() {
         </div>
 
         {isEmployee && showForm && (
-          <form onSubmit={handleSubmit} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '8px' }}>
+          <form onSubmit={handleSubmit} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#fafafa', border: '1px solid #e0e0e0', borderRadius: '2px' }}>
             <div className="form-group">
               <label htmlFor="start_date">Start Date</label>
               <input
@@ -220,25 +262,69 @@ export default function AbsenceRequest() {
           </form>
         )}
 
+        {/* Sort and Filter Controls */}
+        {absences.length > 0 && (
+          <div className="sort-controls">
+            {isManager && (
+              <>
+                <label>Filter by status:</label>
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </>
+            )}
+            <label>Sort by:</label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="created_at">Created Date</option>
+              <option value="start_date">Start Date</option>
+              <option value="end_date">End Date</option>
+              {isManager && <option value="status">Status</option>}
+            </select>
+            <label>Order:</label>
+            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+        )}
+
         {absences.length === 0 ? (
-          <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
-            {isManager 
-              ? 'No absence requests found.' 
-              : 'No absence requests yet. Click "New Request" to create one.'}
-          </p>
+          <div className="empty-state">
+            <h3>No Absence Requests</h3>
+            <p>
+              {isManager 
+                ? 'No absence requests found.' 
+                : 'No absence requests yet. Click "New Request" to create one.'}
+            </p>
+          </div>
         ) : (
-          <div>
-            {absences.map((absence) => {
+          <div className="scrollable" style={{ maxHeight: '600px' }}>
+            {sortAbsences(absences).map((absence) => {
               const isPending = absence.status === 'pending'
               
+              const statusBadge = {
+                pending: 'badge badge-pending',
+                approved: 'badge badge-approved',
+                rejected: 'badge badge-rejected',
+              }[absence.status] || 'badge'
+
               return (
-                <div key={absence.id} style={{ padding: '1rem', marginBottom: '1rem', background: '#f8f9fa', borderRadius: '8px' }}>
+                <div key={absence.id} style={{ padding: '1rem', marginBottom: '1rem', background: '#fff', border: '1px solid #e0e0e0', borderRadius: '2px' }}>
                   {isManager && (
                     <div className="info-row">
                       <div className="info-label">User:</div>
-                      <div className="info-value">{getUserName(absence.user_id)}</div>
+                      <div className="info-value text-truncate">{getUserName(absence.user_id)}</div>
                     </div>
                   )}
+                  <div className="info-row">
+                    <div className="info-label">Status:</div>
+                    <div className="info-value">
+                      <span className={statusBadge}>{absence.status}</span>
+                    </div>
+                  </div>
                   <div className="info-row">
                     <div className="info-label">Start Date:</div>
                     <div className="info-value">
@@ -253,24 +339,7 @@ export default function AbsenceRequest() {
                   </div>
                   <div className="info-row">
                     <div className="info-label">Reason:</div>
-                    <div className="info-value">{absence.reason}</div>
-                  </div>
-                  <div className="info-row">
-                    <div className="info-label">Status:</div>
-                    <div className="info-value">
-                      <span style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '4px',
-                        background: absence.status === 'approved' ? '#d4edda' :
-                                    absence.status === 'rejected' ? '#f8d7da' : '#fff3cd',
-                        color: absence.status === 'approved' ? '#155724' :
-                               absence.status === 'rejected' ? '#721c24' : '#856404',
-                        textTransform: 'capitalize',
-                        fontWeight: '600',
-                      }}>
-                        {absence.status}
-                      </span>
-                    </div>
+                    <div className="info-value text-truncate-2">{absence.reason}</div>
                   </div>
                   <div className="info-row">
                     <div className="info-label">Submitted:</div>

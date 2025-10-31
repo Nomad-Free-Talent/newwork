@@ -25,12 +25,44 @@ export default function DataItems() {
   const [feedbackContent, setFeedbackContent] = useState({})
   const [polishFeedback, setPolishFeedback] = useState({})
   const [submittingFeedback, setSubmittingFeedback] = useState({})
+  const [sortBy, setSortBy] = useState('updated_at')
+  const [sortOrder, setSortOrder] = useState('desc')
 
   const canCreate = user?.role === 'manager' || user?.role === 'employee'
   const canEdit = user?.role === 'manager' || (user?.role === 'employee')
   const canDelete = user?.role === 'manager' || (user?.role === 'employee')
   const isReadOnly = user?.role === 'coworker'
   const canComment = user?.role === 'coworker'
+
+  // Sorting algorithm for data items
+  const sortDataItems = (items) => {
+    const sorted = [...items].sort((a, b) => {
+      let aVal, bVal
+
+      switch (sortBy) {
+        case 'title':
+          aVal = a.title?.toLowerCase() || ''
+          bVal = b.title?.toLowerCase() || ''
+          break
+        case 'created_at':
+          aVal = new Date(a.created_at).getTime()
+          bVal = new Date(b.created_at).getTime()
+          break
+        case 'updated_at':
+        default:
+          aVal = new Date(a.updated_at).getTime()
+          bVal = new Date(b.updated_at).getTime()
+          break
+      }
+
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      } else {
+        return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+      }
+    })
+    return sorted
+  }
 
   useEffect(() => {
     // Fetch users for owner info display (managers and co-workers can fetch all users)
@@ -44,6 +76,7 @@ export default function DataItems() {
     // Fetch data items
     fetchDataItems()
   }, [user])
+
 
   const fetchUsers = async () => {
     try {
@@ -246,7 +279,7 @@ export default function DataItems() {
         </div>
 
         {showForm && (
-          <form onSubmit={editingItem ? handleUpdate : handleCreate} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '8px' }}>
+          <form onSubmit={editingItem ? handleUpdate : handleCreate} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#fafafa', border: '1px solid #e0e0e0', borderRadius: '2px' }}>
             <h3>{editingItem ? 'Edit Data Item' : 'Create New Data Item'}</h3>
             
             <div className="form-group">
@@ -306,13 +339,31 @@ export default function DataItems() {
           </form>
         )}
 
+        {/* Sort Controls */}
+        {dataItems.length > 0 && (
+          <div className="sort-controls">
+            <label>Sort by:</label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="updated_at">Last Updated</option>
+              <option value="created_at">Created Date</option>
+              <option value="title">Title</option>
+            </select>
+            <label>Order:</label>
+            <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+          </div>
+        )}
+
         {dataItems.length === 0 ? (
-          <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
-            No data items found. {canCreate && 'Click "New Data Item" to create one.'}
-          </p>
+          <div className="empty-state">
+            <h3>No Data Items</h3>
+            <p>{canCreate ? 'Click "New Data Item" to create one.' : 'No data items available.'}</p>
+          </div>
         ) : (
           <div className="grid">
-            {dataItems.map((item) => {
+            {sortDataItems(dataItems).map((item) => {
               const ownerInfo = getOwnerInfo(item.owner_id)
               const canEditThis = canEdit && (user?.role === 'manager' || item.owner_id === user?.id)
               const canDeleteThis = canDelete && (user?.role === 'manager' || item.owner_id === user?.id)
@@ -320,51 +371,25 @@ export default function DataItems() {
               return (
                 <div
                   key={item.id}
-                  style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '1.5rem',
-                    boxShadow: '0 5px 15px rgba(0, 0, 0, 0.1)',
-                    border: item.is_deleted ? '2px solid #dc3545' : '1px solid #e0e0e0',
-                  }}
+                  className={`data-item-card ${item.is_deleted ? 'deleted' : ''}`}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ margin: '0 0 0.5rem 0', color: '#667eea' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 className="text-truncate" style={{ margin: '0 0 0.5rem 0' }}>
                         {item.title}
                       </h3>
                       <span
-                        style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '4px',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          background: ownerInfo.bg,
-                          color: ownerInfo.color,
-                          display: 'inline-block',
-                          marginBottom: '0.5rem',
-                          marginRight: '0.5rem',
-                        }}
+                        className={`badge badge-${ownerInfo.role}`}
+                        style={{ marginBottom: '0.5rem', marginRight: '0.5rem' }}
                         title={ownerInfo.email}
                       >
                         {ownerInfo.role.charAt(0).toUpperCase() + ownerInfo.role.slice(1)}
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                      <span className="text-truncate" style={{ fontSize: '0.75rem', color: '#666', display: 'block' }}>
                         {ownerInfo.email}
                       </span>
                       {item.is_deleted && (
-                        <span
-                          style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '4px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            background: '#f8d7da',
-                            color: '#721c24',
-                            marginLeft: '0.5rem',
-                            display: 'inline-block',
-                          }}
-                        >
+                        <span className="badge" style={{ background: '#ffebee', color: '#c62828', marginLeft: '0.5rem' }}>
                           Deleted
                         </span>
                       )}
@@ -394,7 +419,7 @@ export default function DataItems() {
                     )}
                   </div>
 
-                  <p style={{ color: '#666', margin: '0 0 1rem 0', lineHeight: '1.5' }}>
+                  <p className="text-truncate-3" style={{ color: '#666', margin: '0 0 1rem 0', lineHeight: '1.5', flex: 1 }}>
                     {item.description}
                   </p>
 
@@ -432,8 +457,9 @@ export default function DataItems() {
                               setSubmittingFeedback({ ...submittingFeedback, [item.id]: false })
                             }
                           }}
+                          style={{ marginTop: '1rem' }}
                         >
-                          <div className="form-group" style={{ marginBottom: '1rem' }}>
+                          <div className="form-group">
                             <label htmlFor={`feedback-${item.id}`}>Feedback</label>
                             <textarea
                               id={`feedback-${item.id}`}
@@ -442,23 +468,23 @@ export default function DataItems() {
                               required
                               placeholder="Enter your feedback..."
                               rows="3"
+                              maxLength={500}
                             />
                           </div>
-                          <div className="form-group" style={{ marginBottom: '1rem' }}>
-                            <label>
-                              <input
-                                type="checkbox"
-                                checked={polishFeedback[item.id] || false}
-                                onChange={(e) => setPolishFeedback({ ...polishFeedback, [item.id]: e.target.checked })}
-                              />
-                              {' '}Enhance with AI
-                            </label>
+                          <div className="checkbox-group">
+                            <input
+                              type="checkbox"
+                              id={`polish-${item.id}`}
+                              checked={polishFeedback[item.id] || false}
+                              onChange={(e) => setPolishFeedback({ ...polishFeedback, [item.id]: e.target.checked })}
+                            />
+                            <label htmlFor={`polish-${item.id}`}>Enhance with AI</label>
                           </div>
                           <button
                             type="submit"
                             className="btn btn-primary"
                             disabled={submittingFeedback[item.id]}
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                            style={{ marginTop: '0.75rem', padding: '0.5rem 1rem', fontSize: '0.875rem' }}
                           >
                             {submittingFeedback[item.id] ? 'Submitting...' : 'Submit Feedback'}
                           </button>
@@ -471,34 +497,36 @@ export default function DataItems() {
                   {item.feedbacks && item.feedbacks.length > 0 && (
                     <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e0e0e0' }}>
                       <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Feedbacks ({item.feedbacks.length})</h4>
-                      {item.feedbacks.map((feedback) => {
+                      <div className="scrollable" style={{ maxHeight: '200px' }}>
+                        {item.feedbacks.map((feedback) => {
                         const feedbackUser = users.find(u => u.id === feedback.from_user_id)
                         return (
-                          <div key={feedback.id} style={{ padding: '0.75rem', background: '#f8f9fa', borderRadius: '6px', marginBottom: '0.5rem' }}>
-                            <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.25rem' }}>
+                          <div key={feedback.id} style={{ padding: '0.75rem', background: '#fafafa', border: '1px solid #e0e0e0', borderRadius: '2px', marginBottom: '0.5rem' }}>
+                            <div className="text-truncate" style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.5rem', fontWeight: '500' }}>
                               {feedbackUser ? feedbackUser.name : 'Unknown'} - {format(new Date(feedback.created_at), 'MMM d, yyyy')}
                             </div>
                             {feedback.polished_content ? (
                               <div>
-                                <div style={{ fontSize: '0.875rem', color: '#999', fontStyle: 'italic', marginBottom: '0.25rem' }}>
+                                <div className="text-truncate-2" style={{ fontSize: '0.875rem', color: '#999', marginBottom: '0.5rem' }}>
                                   Original: {feedback.content}
                                 </div>
-                                <div style={{ fontSize: '0.875rem', color: '#667eea', fontWeight: '500' }}>
+                                <div className="text-truncate-3" style={{ fontSize: '0.875rem', color: '#2196F3', fontWeight: '500' }}>
                                   ✨ AI-Enhanced: {feedback.polished_content}
                                 </div>
                               </div>
                             ) : (
-                              <div style={{ fontSize: '0.875rem' }}>
+                              <div className="text-truncate-3" style={{ fontSize: '0.875rem', wordBreak: 'break-word' }}>
                                 {feedback.content}
                               </div>
                             )}
                           </div>
                         )
                       })}
+                      </div>
                     </div>
                   )}
 
-                  <div style={{ fontSize: '0.875rem', color: '#999', borderTop: '1px solid #e0e0e0', paddingTop: '0.75rem', marginTop: '1rem' }}>
+                        <div style={{ fontSize: '0.875rem', color: '#999', borderTop: '1px solid #e0e0e0', paddingTop: '0.75rem', marginTop: 'auto' }}>
                     <div>Created: {format(new Date(item.created_at), 'MMM d, yyyy')}</div>
                     <div>Updated: {format(new Date(item.updated_at), 'MMM d, yyyy')}</div>
                   </div>
