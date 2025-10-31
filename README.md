@@ -120,6 +120,11 @@ All API endpoints are prefixed with `/api`.
 - `POST /api/feedback` - Submit feedback for an employee
 - `POST /api/absences` - Create absence request
 - `GET /api/absences/me` - Get current user's absence requests
+- `GET /api/data-items` - List data items (filtered by role)
+- `GET /api/data-items/:id` - Get specific data item
+- `POST /api/data-items` - Create data item
+- `PUT /api/data-items/:id` - Update data item
+- `DELETE /api/data-items/:id` - Soft delete data item
 
 ## Architecture Decisions
 
@@ -141,6 +146,18 @@ All API endpoints are prefixed with `/api`.
 - **In-Memory Storage**: For this demo, data is stored in memory using `Arc<RwLock<HashMap>>` for thread-safe access.
 - **Migration System**: Initial data seeding is handled by migrations (`src/migrations.rs`). Migrations run automatically on server startup and are idempotent (won't duplicate data if run multiple times).
 - **Easy Database Migration**: The storage abstraction makes it straightforward to replace with a real database (PostgreSQL, MongoDB, etc.) without changing business logic.
+
+### Data Items & Access Control Example
+
+The application includes a data items feature that demonstrates sophisticated access control:
+
+- **Data Item Structure**: Each item has `title`, `description`, `owner` (manager/coworker/employee), and `is_deleted` flag
+- **Access Control Rules**:
+  - **Manager**: Full access - can read, write, and delete all data items
+  - **Co-worker**: Read-only access - can read all data items but cannot create, update, or delete
+  - **Employee**: Owner-based access - can only read, write, and delete data items where `owner == "employee"`
+
+This serves as a practical example of role-based access control implementation.
 
 ### Frontend Architecture
 

@@ -302,3 +302,192 @@ pub async fn get_my_absences(
     Ok(Json(json!(my_absences)))
 }
 
+// Data Items handlers with access control
+
+pub async fn list_data_items(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Value>, StatusCode> {
+    let data_items = state.data_items.read().await;
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    let items: Vec<&DataItem> = if auth_user.is_manager() || auth_user.is_coworker() {
+        // Manager and co-worker can see all (including deleted)
+        data_items.values().collect()
+    } else if auth_user.is_employee() {
+        // Employee can only see their own data
+        data_items
+            .values()
+            .filter(|item| item.owner == "employee")
+            .collect()
+    } else {
+        return Err(StatusCode::FORBIDDEN);
+    };
+
+    Ok(Json(json!(items)))
+}
+
+pub async fn get_data_item(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(item_id): Path<String>,
+) -> Result<Json<Value>, StatusCode> {
+    let data_items = state.data_items.read().await;
+    let item = data_items
+        .get(&item_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Check read permissions
+    let can_read = if auth_user.is_manager() || auth_user.is_coworker() {
+        true // Can read all
+    } else if auth_user.is_employee() {
+        item.owner == "employee" // Can only read own
+    } else {
+        false
+    };
+
+    if !can_read {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(Json(json!(item)))
+}
+
+pub async fn create_data_item(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Json(create_req): Json<CreateDataItemRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Check write permissions
+    let can_write = if auth_user.is_manager() {
+        true // Manager can create any data
+    } else if auth_user.is_employee() {
+        create_req.owner == "employee" // Employee can only create own data
+    } else if auth_user.is_coworker() {
+        false // Co-worker cannot create (read-only)
+    } else {
+        false
+    };
+
+    if !can_write {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let now = chrono::Utc::now();
+    let item = DataItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        title: create_req.title,
+        description: create_req.description,
+        owner: create_req.owner,
+        is_deleted: false,
+        created_at: now,
+        updated_at: now,
+    };
+
+    let mut data_items = state.data_items.write().await;
+    data_items.insert(item.id.clone(), item.clone());
+
+    Ok(Json(json!(item)))
+}
+
+pub async fn update_data_item(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(item_id): Path<String>,
+    Json(update_req): Json<UpdateDataItemRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let mut data_items = state.data_items.write().await;
+    let item = data_items
+        .get_mut(&item_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Check write permissions
+    let can_write = if auth_user.is_manager() {
+        true // Manager can update all
+    } else if auth_user.is_employee() {
+        item.owner == "employee" // Employee can only update own
+    } else if auth_user.is_coworker() {
+        false // Co-worker cannot update (read-only)
+    } else {
+        false
+    };
+
+    if !can_write {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Update fields
+    if let Some(title) = update_req.title {
+        item.title = title;
+    }
+    if let Some(description) = update_req.description {
+        item.description = description;
+    }
+    if let Some(is_deleted) = update_req.is_deleted {
+        item.is_deleted = is_deleted;
+    }
+    item.updated_at = chrono::Utc::now();
+
+    Ok(Json(json!(item)))
+}
+
+pub async fn delete_data_item(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(item_id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    let mut data_items = state.data_items.write().await;
+    let item = data_items
+        .get_mut(&item_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Check delete permissions
+    let can_delete = if auth_user.is_manager() {
+        true // Manager can delete all
+    } else if auth_user.is_employee() {
+        item.owner == "employee" // Employee can only delete own
+    } else if auth_user.is_coworker() {
+        false // Co-worker cannot delete (read-only)
+    } else {
+        false
+    };
+
+    if !can_delete {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Soft delete by setting is_deleted flag
+    item.is_deleted = true;
+    item.updated_at = chrono::Utc::now();
+
+    Ok(StatusCode::NO_CONTENT)
+}
+

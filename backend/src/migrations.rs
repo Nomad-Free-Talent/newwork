@@ -1,7 +1,7 @@
 use chrono::Utc;
 use tracing::info;
 
-use crate::models::{Employee, User};
+use crate::models::{Employee, User, DataItem};
 use crate::state::AppState;
 
 pub async fn run_migrations(state: &AppState) {
@@ -9,6 +9,7 @@ pub async fn run_migrations(state: &AppState) {
     
     seed_default_users(state).await;
     seed_default_employees(state).await;
+    seed_default_data_items(state).await;
     
     info!("Database migrations completed");
 }
@@ -101,5 +102,103 @@ async fn seed_default_employees(state: &AppState) {
     employees.insert(emp2.id.clone(), emp2);
     
     info!("Seeded 2 default employees");
+}
+
+async fn seed_default_data_items(state: &AppState) {
+    let mut data_items = state.data_items.write().await;
+    
+    // Check if data items already exist
+    if !data_items.is_empty() {
+        info!("Data items already seeded, skipping...");
+        return;
+    }
+    
+    info!("Seeding default data items...");
+    
+    let now = Utc::now();
+    
+    // Sensitive data examples
+    let sensitive1 = DataItem {
+        id: "data-1".to_string(),
+        title: "Sensitive Financial Report".to_string(),
+        description: "Q4 financial analysis with revenue projections and budget allocations".to_string(),
+        owner: "manager".to_string(),
+        is_deleted: false,
+        created_at: now - chrono::Duration::days(30),
+        updated_at: now - chrono::Duration::days(5),
+    };
+    
+    let sensitive2 = DataItem {
+        id: "data-2".to_string(),
+        title: "Employee Salary Data".to_string(),
+        description: "Confidential salary information for engineering team members".to_string(),
+        owner: "manager".to_string(),
+        is_deleted: false,
+        created_at: now - chrono::Duration::days(20),
+        updated_at: now - chrono::Duration::days(3),
+    };
+    
+    // Non-sensitive data examples
+    let nonsensitive1 = DataItem {
+        id: "data-3".to_string(),
+        title: "Team Meeting Notes".to_string(),
+        description: "Weekly standup notes and action items from engineering team meetings".to_string(),
+        owner: "coworker".to_string(),
+        is_deleted: false,
+        created_at: now - chrono::Duration::days(10),
+        updated_at: now - chrono::Duration::days(2),
+    };
+    
+    let nonsensitive2 = DataItem {
+        id: "data-4".to_string(),
+        title: "Project Documentation".to_string(),
+        description: "Public project documentation and technical specifications".to_string(),
+        owner: "coworker".to_string(),
+        is_deleted: false,
+        created_at: now - chrono::Duration::days(15),
+        updated_at: now - chrono::Duration::days(1),
+    };
+    
+    // Employee-owned data
+    let employee_data1 = DataItem {
+        id: "data-5".to_string(),
+        title: "Personal Task List".to_string(),
+        description: "My personal task list and work items for the current sprint".to_string(),
+        owner: "employee".to_string(),
+        is_deleted: false,
+        created_at: now - chrono::Duration::days(7),
+        updated_at: now - chrono::Duration::hours(12),
+    };
+    
+    let employee_data2 = DataItem {
+        id: "data-6".to_string(),
+        title: "Learning Notes".to_string(),
+        description: "Personal notes from learning sessions and training materials".to_string(),
+        owner: "employee".to_string(),
+        is_deleted: false,
+        created_at: now - chrono::Duration::days(5),
+        updated_at: now - chrono::Duration::hours(6),
+    };
+    
+    // Deleted item example
+    let deleted_item = DataItem {
+        id: "data-7".to_string(),
+        title: "Old Project Plan".to_string(),
+        description: "Outdated project plan that has been replaced".to_string(),
+        owner: "employee".to_string(),
+        is_deleted: true,
+        created_at: now - chrono::Duration::days(60),
+        updated_at: now - chrono::Duration::days(30),
+    };
+    
+    data_items.insert(sensitive1.id.clone(), sensitive1);
+    data_items.insert(sensitive2.id.clone(), sensitive2);
+    data_items.insert(nonsensitive1.id.clone(), nonsensitive1);
+    data_items.insert(nonsensitive2.id.clone(), nonsensitive2);
+    data_items.insert(employee_data1.id.clone(), employee_data1);
+    data_items.insert(employee_data2.id.clone(), employee_data2);
+    data_items.insert(deleted_item.id.clone(), deleted_item);
+    
+    info!("Seeded 7 default data items (sensitive, non-sensitive, employee-owned, and deleted examples)");
 }
 

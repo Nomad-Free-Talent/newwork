@@ -39,6 +39,9 @@ export default function EmployeeList() {
           <button className="btn-link" onClick={() => navigate('/absences')}>
             My Absences
           </button>
+          <button className="btn-link" onClick={() => navigate('/data-items')}>
+            Data Items
+          </button>
           <button className="btn-link" onClick={logout}>
             Logout
           </button>

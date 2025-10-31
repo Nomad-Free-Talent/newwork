@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import EmployeeList from './pages/EmployeeList'
 import EmployeeProfile from './pages/EmployeeProfile'
 import AbsenceRequest from './pages/AbsenceRequest'
+import DataItems from './pages/DataItems'
 import './App.css'
 
 function PrivateRoute({ children }) {
@@ -41,6 +42,14 @@ function AppRoutes() {
         element={
           <PrivateRoute>
             <AbsenceRequest />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/data-items"
+        element={
+          <PrivateRoute>
+            <DataItems />
           </PrivateRoute>
         }
       />

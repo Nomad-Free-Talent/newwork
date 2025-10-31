@@ -125,3 +125,28 @@ pub struct UpdateEmployeeRequest {
     pub address: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataItem {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub owner: String, // "manager", "coworker", "employee"
+    pub is_deleted: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateDataItemRequest {
+    pub title: String,
+    pub description: String,
+    pub owner: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateDataItemRequest {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub is_deleted: Option<bool>,
+}
+

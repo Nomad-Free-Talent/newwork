@@ -103,6 +103,9 @@ export default function EmployeeProfile() {
           <button className="btn-link" onClick={() => navigate('/employees')}>
             Back to List
           </button>
+          <button className="btn-link" onClick={() => navigate('/data-items')}>
+            Data Items
+          </button>
           <span>Logged in as: {user?.email} ({user?.role})</span>
           <button className="btn-link" onClick={logout}>Logout</button>
         </div>
