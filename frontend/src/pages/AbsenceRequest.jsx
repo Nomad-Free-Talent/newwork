@@ -26,7 +26,7 @@ export default function AbsenceRequest() {
 
   const fetchAbsences = async () => {
     try {
-      const response = await api.get('/api/absences/me')
+      const response = await api.get('/absences/me')
       setAbsences(response.data)
     } catch (err) {
       setError('Failed to load absence requests')
@@ -42,7 +42,7 @@ export default function AbsenceRequest() {
     setSubmitting(true)
 
     try {
-      await api.post('/api/absences', {
+      await api.post('/absences', {
         start_date: new Date(formData.start_date).toISOString(),
         end_date: new Date(formData.end_date).toISOString(),
         reason: formData.reason,

@@ -28,7 +28,7 @@ export default function EmployeeProfile() {
 
   const fetchEmployee = async () => {
     try {
-      const response = await api.get(`/api/employees/${id}`)
+      const response = await api.get(`/employees/${id}`)
       setEmployee(response.data)
     } catch (err) {
       setError('Failed to load employee profile')
@@ -57,7 +57,7 @@ export default function EmployeeProfile() {
     Object.keys(updates).forEach(key => updates[key] === undefined && delete updates[key])
 
     try {
-      const response = await api.put(`/api/employees/${id}`, updates)
+      const response = await api.put(`/employees/${id}`, updates)
       setEmployee(response.data)
       setIsEditing(false)
       setSuccess('Profile updated successfully')
@@ -72,7 +72,7 @@ export default function EmployeeProfile() {
     setError('')
 
     try {
-      await api.post('/api/feedback', {
+      await api.post('/feedback', {
         employee_id: id,
         content: feedback,
         polish: polishFeedback,
