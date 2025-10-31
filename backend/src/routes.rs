@@ -25,6 +25,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/data-items/:id", get(get_data_item))
         .route("/data-items/:id", put(update_data_item))
         .route("/data-items/:id", delete(delete_data_item))
+        .route("/data-items/:id/feedback", post(add_data_item_feedback))
         .layer(from_fn(auth_middleware));
 
     Router::new()

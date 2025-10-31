@@ -80,6 +80,7 @@ async fn seed_default_data_items(state: &AppState) {
         description: "Q4 financial analysis with revenue projections and budget allocations".to_string(),
         owner_id: "1".to_string(), // manager@newwork.com
         is_deleted: false,
+        feedbacks: vec![],
         created_at: now - chrono::Duration::days(30),
         updated_at: now - chrono::Duration::days(5),
     };
@@ -90,6 +91,7 @@ async fn seed_default_data_items(state: &AppState) {
         description: "Confidential salary information for engineering team members".to_string(),
         owner_id: "1".to_string(), // manager@newwork.com
         is_deleted: false,
+        feedbacks: vec![],
         created_at: now - chrono::Duration::days(20),
         updated_at: now - chrono::Duration::days(3),
     };
@@ -101,6 +103,7 @@ async fn seed_default_data_items(state: &AppState) {
         description: "Weekly standup notes and action items from engineering team meetings".to_string(),
         owner_id: "3".to_string(), // coworker@newwork.com
         is_deleted: false,
+        feedbacks: vec![],
         created_at: now - chrono::Duration::days(10),
         updated_at: now - chrono::Duration::days(2),
     };
@@ -111,6 +114,7 @@ async fn seed_default_data_items(state: &AppState) {
         description: "Public project documentation and technical specifications".to_string(),
         owner_id: "3".to_string(), // coworker@newwork.com
         is_deleted: false,
+        feedbacks: vec![],
         created_at: now - chrono::Duration::days(15),
         updated_at: now - chrono::Duration::days(1),
     };
@@ -122,6 +126,7 @@ async fn seed_default_data_items(state: &AppState) {
         description: "My personal task list and work items for the current sprint".to_string(),
         owner_id: "2".to_string(), // employee@newwork.com
         is_deleted: false,
+        feedbacks: vec![],
         created_at: now - chrono::Duration::days(7),
         updated_at: now - chrono::Duration::hours(12),
     };
@@ -132,6 +137,7 @@ async fn seed_default_data_items(state: &AppState) {
         description: "Personal notes from learning sessions and training materials".to_string(),
         owner_id: "2".to_string(), // employee@newwork.com
         is_deleted: false,
+        feedbacks: vec![],
         created_at: now - chrono::Duration::days(5),
         updated_at: now - chrono::Duration::hours(6),
     };
@@ -143,6 +149,7 @@ async fn seed_default_data_items(state: &AppState) {
         description: "Outdated project plan that has been replaced".to_string(),
         owner_id: "2".to_string(), // employee@newwork.com
         is_deleted: true,
+        feedbacks: vec![],
         created_at: now - chrono::Duration::days(60),
         updated_at: now - chrono::Duration::days(30),
     };

@@ -21,11 +21,16 @@ export default function DataItems() {
   })
   const [users, setUsers] = useState([])
   const [submitting, setSubmitting] = useState(false)
+  const [feedbackForms, setFeedbackForms] = useState({})
+  const [feedbackContent, setFeedbackContent] = useState({})
+  const [polishFeedback, setPolishFeedback] = useState({})
+  const [submittingFeedback, setSubmittingFeedback] = useState({})
 
   const canCreate = user?.role === 'manager' || user?.role === 'employee'
   const canEdit = user?.role === 'manager' || (user?.role === 'employee')
   const canDelete = user?.role === 'manager' || (user?.role === 'employee')
   const isReadOnly = user?.role === 'coworker'
+  const canComment = user?.role === 'coworker'
 
   useEffect(() => {
     // Fetch users for owner info display (managers and co-workers can fetch all users)
@@ -206,8 +211,8 @@ export default function DataItems() {
         <div className="navbar-actions">
           {user?.role === 'manager' && (
             <>
-              <button className="btn-link" onClick={() => navigate('/employees')}>
-                Employee Directory
+              <button className="btn-link" onClick={() => navigate('/users')}>
+                User Management
               </button>
               <button className="btn-link" onClick={() => navigate('/absences')}>
                 Absence Management
@@ -393,7 +398,107 @@ export default function DataItems() {
                     {item.description}
                   </p>
 
-                  <div style={{ fontSize: '0.875rem', color: '#999', borderTop: '1px solid #e0e0e0', paddingTop: '0.75rem' }}>
+                  {/* Feedback Section for Co-workers */}
+                  {canComment && !item.is_deleted && (
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e0e0e0' }}>
+                      <button
+                        onClick={() => setFeedbackForms({ ...feedbackForms, [item.id]: !feedbackForms[item.id] })}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', marginBottom: feedbackForms[item.id] ? '1rem' : 0 }}
+                      >
+                        {feedbackForms[item.id] ? 'Cancel' : 'Add Feedback'}
+                      </button>
+
+                      {feedbackForms[item.id] && (
+                        <form
+                          onSubmit={async (e) => {
+                            e.preventDefault()
+                            setSubmittingFeedback({ ...submittingFeedback, [item.id]: true })
+                            setError('')
+                            setSuccess('')
+                            try {
+                              await api.post(`/data-items/${item.id}/feedback`, {
+                                content: feedbackContent[item.id] || '',
+                                polish: polishFeedback[item.id] || false,
+                              })
+                              setSuccess('Feedback added successfully!')
+                              setFeedbackForms({ ...feedbackForms, [item.id]: false })
+                              setFeedbackContent({ ...feedbackContent, [item.id]: '' })
+                              setPolishFeedback({ ...polishFeedback, [item.id]: false })
+                              fetchDataItems()
+                            } catch (err) {
+                              setError(err.response?.data?.error || 'Failed to add feedback')
+                            } finally {
+                              setSubmittingFeedback({ ...submittingFeedback, [item.id]: false })
+                            }
+                          }}
+                        >
+                          <div className="form-group" style={{ marginBottom: '1rem' }}>
+                            <label htmlFor={`feedback-${item.id}`}>Feedback</label>
+                            <textarea
+                              id={`feedback-${item.id}`}
+                              value={feedbackContent[item.id] || ''}
+                              onChange={(e) => setFeedbackContent({ ...feedbackContent, [item.id]: e.target.value })}
+                              required
+                              placeholder="Enter your feedback..."
+                              rows="3"
+                            />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: '1rem' }}>
+                            <label>
+                              <input
+                                type="checkbox"
+                                checked={polishFeedback[item.id] || false}
+                                onChange={(e) => setPolishFeedback({ ...polishFeedback, [item.id]: e.target.checked })}
+                              />
+                              {' '}Enhance with AI
+                            </label>
+                          </div>
+                          <button
+                            type="submit"
+                            className="btn btn-primary"
+                            disabled={submittingFeedback[item.id]}
+                            style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                          >
+                            {submittingFeedback[item.id] ? 'Submitting...' : 'Submit Feedback'}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Display Feedbacks */}
+                  {item.feedbacks && item.feedbacks.length > 0 && (
+                    <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e0e0e0' }}>
+                      <h4 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Feedbacks ({item.feedbacks.length})</h4>
+                      {item.feedbacks.map((feedback) => {
+                        const feedbackUser = users.find(u => u.id === feedback.from_user_id)
+                        return (
+                          <div key={feedback.id} style={{ padding: '0.75rem', background: '#f8f9fa', borderRadius: '6px', marginBottom: '0.5rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.25rem' }}>
+                              {feedbackUser ? feedbackUser.name : 'Unknown'} - {format(new Date(feedback.created_at), 'MMM d, yyyy')}
+                            </div>
+                            {feedback.polished_content ? (
+                              <div>
+                                <div style={{ fontSize: '0.875rem', color: '#999', fontStyle: 'italic', marginBottom: '0.25rem' }}>
+                                  Original: {feedback.content}
+                                </div>
+                                <div style={{ fontSize: '0.875rem', color: '#667eea', fontWeight: '500' }}>
+                                  ✨ AI-Enhanced: {feedback.polished_content}
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: '0.875rem' }}>
+                                {feedback.content}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '0.875rem', color: '#999', borderTop: '1px solid #e0e0e0', paddingTop: '0.75rem', marginTop: '1rem' }}>
                     <div>Created: {format(new Date(item.created_at), 'MMM d, yyyy')}</div>
                     <div>Updated: {format(new Date(item.updated_at), 'MMM d, yyyy')}</div>
                   </div>

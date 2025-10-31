@@ -348,14 +348,14 @@ pub async fn list_users(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Value>, StatusCode> {
-    // Only managers can view user management
+    // Managers and co-workers can list users (co-workers need it for feedback author info)
     let auth_user = AuthenticatedUser {
         id: claims.sub,
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
 
-    if !auth_user.is_manager() {
+    if !auth_user.is_manager() && !auth_user.is_coworker() {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -463,6 +463,59 @@ pub async fn delete_user(
     Ok(Json(json!({ "message": "User deleted successfully" })))
 }
 
+pub async fn add_data_item_feedback(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(item_id): Path<String>,
+    Json(feedback_req): Json<AddDataItemFeedbackRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub.clone(),
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Only co-workers can add feedback to data items
+    if !auth_user.is_coworker() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let mut data_items = state.data_items.write().await;
+    let item = data_items
+        .get_mut(&item_id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    // Co-workers can only comment on non-deleted items
+    if item.is_deleted {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let mut content = feedback_req.content.clone();
+    
+    // Polish content using AI if requested
+    if feedback_req.polish.unwrap_or(false) {
+        content = polish_feedback_with_ai(&content).await
+            .unwrap_or_else(|_| feedback_req.content.clone());
+    }
+
+    let feedback = DataItemFeedback {
+        id: uuid::Uuid::new_v4().to_string(),
+        from_user_id: claims.sub.clone(),
+        content: feedback_req.content,
+        polished_content: if feedback_req.polish.unwrap_or(false) {
+            Some(content)
+        } else {
+            None
+        },
+        created_at: chrono::Utc::now(),
+    };
+
+    item.feedbacks.push(feedback.clone());
+    item.updated_at = chrono::Utc::now();
+
+    Ok(Json(json!(feedback)))
+}
+
 // Data Items handlers with access control
 
 pub async fn list_data_items(
@@ -562,6 +615,7 @@ pub async fn create_data_item(
         description: create_req.description,
         owner_id,
         is_deleted: false,
+        feedbacks: vec![],
         created_at: now,
         updated_at: now,
     };

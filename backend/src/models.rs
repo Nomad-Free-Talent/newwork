@@ -94,12 +94,22 @@ pub struct UpdateUserRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataItemFeedback {
+    pub id: String,
+    pub from_user_id: String, // User ID who created the feedback
+    pub content: String,
+    pub polished_content: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataItem {
     pub id: String,
     pub title: String,
     pub description: String,
     pub owner_id: String, // User ID of the owner
     pub is_deleted: bool,
+    pub feedbacks: Vec<DataItemFeedback>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -116,5 +126,11 @@ pub struct UpdateDataItemRequest {
     pub title: Option<String>,
     pub description: Option<String>,
     pub is_deleted: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AddDataItemFeedbackRequest {
+    pub content: String,
+    pub polish: Option<bool>,
 }
 
