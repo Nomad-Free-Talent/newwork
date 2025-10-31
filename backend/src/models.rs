@@ -99,7 +99,7 @@ pub struct AbsenceRequest {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AbsenceStatus {
     Pending,
@@ -112,6 +112,11 @@ pub struct CreateAbsenceRequest {
     pub start_date: DateTime<Utc>,
     pub end_date: DateTime<Utc>,
     pub reason: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateAbsenceStatusRequest {
+    pub status: AbsenceStatus,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

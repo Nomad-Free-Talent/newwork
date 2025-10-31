@@ -207,9 +207,11 @@ export default function DataItems() {
           <button className="btn-link" onClick={() => navigate('/employees')}>
             Employee Directory
           </button>
-          <button className="btn-link" onClick={() => navigate('/absences')}>
-            My Absences
-          </button>
+          {(user?.role === 'manager' || user?.role === 'employee') && (
+            <button className="btn-link" onClick={() => navigate('/absences')}>
+              {user?.role === 'manager' ? 'Absence Management' : 'My Absences'}
+            </button>
+          )}
           <span>Logged in as: {user?.email} ({user?.role})</span>
           <button className="btn-link" onClick={logout}>Logout</button>
         </div>

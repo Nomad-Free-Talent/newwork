@@ -36,9 +36,11 @@ export default function EmployeeList() {
         <h2>NEWWORK Employee Directory</h2>
         <div className="navbar-actions">
           <span>Logged in as: {user?.email} ({user?.role})</span>
-          <button className="btn-link" onClick={() => navigate('/absences')}>
-            My Absences
-          </button>
+          {(user?.role === 'manager' || user?.role === 'employee') && (
+            <button className="btn-link" onClick={() => navigate('/absences')}>
+              {user?.role === 'manager' ? 'Absence Management' : 'My Absences'}
+            </button>
+          )}
           <button className="btn-link" onClick={() => navigate('/data-items')}>
             Data Items
           </button>

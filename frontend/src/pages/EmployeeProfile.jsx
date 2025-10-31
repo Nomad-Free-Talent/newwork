@@ -103,6 +103,11 @@ export default function EmployeeProfile() {
           <button className="btn-link" onClick={() => navigate('/employees')}>
             Back to List
           </button>
+          {(user?.role === 'manager' || user?.role === 'employee') && (
+            <button className="btn-link" onClick={() => navigate('/absences')}>
+              {user?.role === 'manager' ? 'Absence Management' : 'My Absences'}
+            </button>
+          )}
           <button className="btn-link" onClick={() => navigate('/data-items')}>
             Data Items
           </button>

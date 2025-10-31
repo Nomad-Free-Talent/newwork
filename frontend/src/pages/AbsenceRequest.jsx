@@ -9,6 +9,7 @@ export default function AbsenceRequest() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [absences, setAbsences] = useState([])
+  const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -19,14 +20,37 @@ export default function AbsenceRequest() {
     reason: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [updating, setUpdating] = useState(null)
+
+  const isManager = user?.role === 'manager'
+  const isEmployee = user?.role === 'employee'
+  const isCoworker = user?.role === 'coworker'
 
   useEffect(() => {
+    if (isCoworker) {
+      setLoading(false)
+      return
+    }
+    
     fetchAbsences()
-  }, [])
+    if (isManager) {
+      fetchEmployees()
+    }
+  }, [user])
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/employees')
+      setEmployees(response.data)
+    } catch (err) {
+      console.error('Failed to load employees:', err)
+    }
+  }
 
   const fetchAbsences = async () => {
     try {
-      const response = await api.get('/absences/me')
+      const endpoint = isManager ? '/absences' : '/absences/me'
+      const response = await api.get(endpoint)
       setAbsences(response.data)
     } catch (err) {
       setError('Failed to load absence requests')
@@ -37,6 +61,8 @@ export default function AbsenceRequest() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!isEmployee) return
+    
     setError('')
     setSuccess('')
     setSubmitting(true)
@@ -52,20 +78,83 @@ export default function AbsenceRequest() {
       setShowForm(false)
       fetchAbsences()
     } catch (err) {
-      setError('Failed to submit absence request')
+      setError(err.response?.data?.error || 'Failed to submit absence request')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleApprove = async (absenceId) => {
+    setUpdating(absenceId)
+    setError('')
+    setSuccess('')
+
+    try {
+      await api.put(`/absences/${absenceId}/status`, { status: 'approved' })
+      setSuccess('Absence request approved!')
+      fetchAbsences()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to approve absence request')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const handleReject = async (absenceId) => {
+    setUpdating(absenceId)
+    setError('')
+    setSuccess('')
+
+    try {
+      await api.put(`/absences/${absenceId}/status`, { status: 'rejected' })
+      setSuccess('Absence request rejected!')
+      fetchAbsences()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to reject absence request')
+    } finally {
+      setUpdating(null)
+    }
+  }
+
+  const getEmployeeName = (employeeId) => {
+    const employee = employees.find(emp => emp.id === employeeId)
+    return employee ? employee.name : `Employee ${employeeId}`
   }
 
   if (loading) {
     return <div className="loading">Loading...</div>
   }
 
+  if (isCoworker) {
+    return (
+      <div className="app-container">
+        <div className="navbar">
+          <h2>Absence Requests</h2>
+          <div className="navbar-actions">
+            <button className="btn-link" onClick={() => navigate('/employees')}>
+              Employee Directory
+            </button>
+            <button className="btn-link" onClick={() => navigate('/data-items')}>
+              Data Items
+            </button>
+            <span>Logged in as: {user?.email} ({user?.role})</span>
+            <button className="btn-link" onClick={logout}>Logout</button>
+          </div>
+        </div>
+        <div className="card">
+          <h1>Access Restricted</h1>
+          <p style={{ color: '#666', marginTop: '1rem' }}>
+            Co-workers do not have access to absence management.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-container">
       <div className="navbar">
-        <h2>Absence Requests</h2>
+        <h2>{isManager ? 'Absence Management' : 'My Absence Requests'}</h2>
         <div className="navbar-actions">
           <button className="btn-link" onClick={() => navigate('/employees')}>
             Employee Directory
@@ -83,13 +172,15 @@ export default function AbsenceRequest() {
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h1>My Absence Requests</h1>
-          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? 'Cancel' : 'New Request'}
-          </button>
+          <h1>{isManager ? 'All Absence Requests' : 'My Absence Requests'}</h1>
+          {isEmployee && (
+            <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+              {showForm ? 'Cancel' : 'New Request'}
+            </button>
+          )}
         </div>
 
-        {showForm && (
+        {isEmployee && showForm && (
           <form onSubmit={handleSubmit} style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '8px' }}>
             <div className="form-group">
               <label htmlFor="start_date">Start Date</label>
@@ -129,57 +220,89 @@ export default function AbsenceRequest() {
 
         {absences.length === 0 ? (
           <p style={{ color: '#666', textAlign: 'center', padding: '2rem' }}>
-            No absence requests yet. Click "New Request" to create one.
+            {isManager 
+              ? 'No absence requests found.' 
+              : 'No absence requests yet. Click "New Request" to create one.'}
           </p>
         ) : (
           <div>
-            {absences.map((absence) => (
-              <div key={absence.id} style={{ padding: '1rem', marginBottom: '1rem', background: '#f8f9fa', borderRadius: '8px' }}>
-                <div className="info-row">
-                  <div className="info-label">Start Date:</div>
-                  <div className="info-value">
-                    {format(new Date(absence.start_date), 'MMMM d, yyyy')}
+            {absences.map((absence) => {
+              const isPending = absence.status === 'pending'
+              
+              return (
+                <div key={absence.id} style={{ padding: '1rem', marginBottom: '1rem', background: '#f8f9fa', borderRadius: '8px' }}>
+                  {isManager && (
+                    <div className="info-row">
+                      <div className="info-label">Employee:</div>
+                      <div className="info-value">{getEmployeeName(absence.employee_id)}</div>
+                    </div>
+                  )}
+                  <div className="info-row">
+                    <div className="info-label">Start Date:</div>
+                    <div className="info-value">
+                      {format(new Date(absence.start_date), 'MMMM d, yyyy')}
+                    </div>
                   </div>
-                </div>
-                <div className="info-row">
-                  <div className="info-label">End Date:</div>
-                  <div className="info-value">
-                    {format(new Date(absence.end_date), 'MMMM d, yyyy')}
+                  <div className="info-row">
+                    <div className="info-label">End Date:</div>
+                    <div className="info-value">
+                      {format(new Date(absence.end_date), 'MMMM d, yyyy')}
+                    </div>
                   </div>
-                </div>
-                <div className="info-row">
-                  <div className="info-label">Reason:</div>
-                  <div className="info-value">{absence.reason}</div>
-                </div>
-                <div className="info-row">
-                  <div className="info-label">Status:</div>
-                  <div className="info-value">
-                    <span style={{
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '4px',
-                      background: absence.status === 'approved' ? '#d4edda' :
-                                  absence.status === 'rejected' ? '#f8d7da' : '#fff3cd',
-                      color: absence.status === 'approved' ? '#155724' :
-                             absence.status === 'rejected' ? '#721c24' : '#856404',
-                      textTransform: 'capitalize',
-                      fontWeight: '600',
-                    }}>
-                      {absence.status}
-                    </span>
+                  <div className="info-row">
+                    <div className="info-label">Reason:</div>
+                    <div className="info-value">{absence.reason}</div>
                   </div>
-                </div>
-                <div className="info-row">
-                  <div className="info-label">Submitted:</div>
-                  <div className="info-value">
-                    {format(new Date(absence.created_at), 'MMMM d, yyyy')}
+                  <div className="info-row">
+                    <div className="info-label">Status:</div>
+                    <div className="info-value">
+                      <span style={{
+                        padding: '0.25rem 0.75rem',
+                        borderRadius: '4px',
+                        background: absence.status === 'approved' ? '#d4edda' :
+                                    absence.status === 'rejected' ? '#f8d7da' : '#fff3cd',
+                        color: absence.status === 'approved' ? '#155724' :
+                               absence.status === 'rejected' ? '#721c24' : '#856404',
+                        textTransform: 'capitalize',
+                        fontWeight: '600',
+                      }}>
+                        {absence.status}
+                      </span>
+                    </div>
                   </div>
+                  <div className="info-row">
+                    <div className="info-label">Submitted:</div>
+                    <div className="info-value">
+                      {format(new Date(absence.created_at), 'MMMM d, yyyy')}
+                    </div>
+                  </div>
+                  
+                  {isManager && isPending && (
+                    <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => handleApprove(absence.id)}
+                        disabled={updating === absence.id}
+                        style={{ flex: 1 }}
+                      >
+                        {updating === absence.id ? 'Approving...' : 'Approve'}
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() => handleReject(absence.id)}
+                        disabled={updating === absence.id}
+                        style={{ flex: 1 }}
+                      >
+                        {updating === absence.id ? 'Rejecting...' : 'Reject'}
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
     </div>
   )
 }
-

@@ -257,6 +257,17 @@ pub async fn create_absence_request(
     Extension(claims): Extension<Claims>,
     Json(absence_req): Json<CreateAbsenceRequest>,
 ) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Only employees can request absences
+    if !auth_user.is_employee() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
     let users = state.users.read().await;
     let user = users
         .get(&claims.email)
@@ -285,6 +296,17 @@ pub async fn get_my_absences(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Only employees can view their own absences
+    if !auth_user.is_employee() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
     let users = state.users.read().await;
     let user = users
         .get(&claims.email)
@@ -300,6 +322,62 @@ pub async fn get_my_absences(
         .collect();
 
     Ok(Json(json!(my_absences)))
+}
+
+pub async fn list_all_absences(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Only managers can view all absences
+    if !auth_user.is_manager() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let absences = state.absences.read().await;
+    Ok(Json(json!(absences.clone())))
+}
+
+
+pub async fn update_absence_status(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Path(id): Path<String>,
+    Json(update_req): Json<UpdateAbsenceStatusRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Only managers can approve/reject absences
+    if !auth_user.is_manager() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let mut absences = state.absences.write().await;
+    let absence = absences
+        .iter_mut()
+        .find(|a| a.id == id)
+        .ok_or(StatusCode::NOT_FOUND)?;
+    
+    // Clone status for comparison
+    let current_status = absence.status.clone();
+
+    // Can only update if status is pending
+    if current_status != AbsenceStatus::Pending {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    absence.status = update_req.status.clone();
+
+    Ok(Json(json!(absence)))
 }
 
 pub async fn list_users(
