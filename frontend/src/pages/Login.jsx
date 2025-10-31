@@ -19,7 +19,8 @@ export default function Login() {
     const result = await login(email, password)
     
     if (result.success) {
-      navigate('/employees')
+      // Redirect based on role - will be handled by RoleBasedRedirect in App.jsx
+      navigate('/')
     } else {
       setError(result.error || 'Invalid email or password')
     }

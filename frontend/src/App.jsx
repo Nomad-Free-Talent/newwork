@@ -17,6 +17,37 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" />
 }
 
+function ManagerOnlyRoute({ children }) {
+  const { user } = useAuth()
+
+  if (user?.role !== 'manager') {
+    return <Navigate to="/data-items" />
+  }
+
+  return children
+}
+
+function RoleBasedRedirect() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return <div className="loading">Loading...</div>
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />
+  }
+
+  // Redirect based on role
+  if (user.role === 'manager') {
+    return <Navigate to="/employees" />
+  } else if (user.role === 'employee') {
+    return <Navigate to="/absences" />
+  } else {
+    return <Navigate to="/data-items" />
+  }
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -25,7 +56,9 @@ function AppRoutes() {
         path="/employees"
         element={
           <PrivateRoute>
-            <EmployeeList />
+            <ManagerOnlyRoute>
+              <EmployeeList />
+            </ManagerOnlyRoute>
           </PrivateRoute>
         }
       />
@@ -33,7 +66,9 @@ function AppRoutes() {
         path="/employees/:id"
         element={
           <PrivateRoute>
-            <EmployeeProfile />
+            <ManagerOnlyRoute>
+              <EmployeeProfile />
+            </ManagerOnlyRoute>
           </PrivateRoute>
         }
       />
@@ -53,7 +88,7 @@ function AppRoutes() {
           </PrivateRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/employees" />} />
+      <Route path="/" element={<RoleBasedRedirect />} />
     </Routes>
   )
 }

@@ -100,9 +100,11 @@ export default function EmployeeProfile() {
       <div className="navbar">
         <h2>Employee Profile</h2>
         <div className="navbar-actions">
-          <button className="btn-link" onClick={() => navigate('/employees')}>
-            Back to List
-          </button>
+          {user?.role === 'manager' && (
+            <button className="btn-link" onClick={() => navigate('/employees')}>
+              Back to List
+            </button>
+          )}
           {(user?.role === 'manager' || user?.role === 'employee') && (
             <button className="btn-link" onClick={() => navigate('/absences')}>
               {user?.role === 'manager' ? 'Absence Management' : 'My Absences'}

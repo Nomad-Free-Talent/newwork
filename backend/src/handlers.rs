@@ -48,35 +48,23 @@ pub async fn get_employee(
     Extension(claims): Extension<Claims>,
     Path(employee_id): Path<String>,
 ) -> Result<Json<Value>, StatusCode> {
-    let employees = state.users.read().await;
-    let user = employees
-        .get(&claims.email)
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
     let auth_user = AuthenticatedUser {
         id: claims.sub,
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
 
+    // Only managers can view employee profiles
+    if !auth_user.is_manager() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
     let employees_db = state.employees.read().await;
     let employee = employees_db
         .get(&employee_id)
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    // Check permissions
-    let can_view_all = auth_user.is_manager() 
-        || (auth_user.is_employee() && user.employee_id.as_ref() == Some(&employee_id));
-
-    if can_view_all {
-        Ok(Json(json!(employee)))
-    } else if auth_user.is_coworker() {
-        // Co-worker can only see public data
-        let public_data: EmployeePublic = employee.clone().into();
-        Ok(Json(json!(public_data)))
-    } else {
-        Err(StatusCode::FORBIDDEN)
-    }
+    Ok(Json(json!(employee)))
 }
 
 pub async fn update_employee(
@@ -85,22 +73,14 @@ pub async fn update_employee(
     Path(employee_id): Path<String>,
     Json(update_req): Json<UpdateEmployeeRequest>,
 ) -> Result<Json<Value>, StatusCode> {
-    let users = state.users.read().await;
-    let user = users
-        .get(&claims.email)
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
     let auth_user = AuthenticatedUser {
         id: claims.sub,
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
 
-    // Check permissions - only manager or owner can edit
-    let can_edit = auth_user.is_manager() 
-        || (auth_user.is_employee() && user.employee_id.as_ref() == Some(&employee_id));
-
-    if !can_edit {
+    // Only managers can edit employee profiles
+    if !auth_user.is_manager() {
         return Err(StatusCode::FORBIDDEN);
     }
 
@@ -138,25 +118,19 @@ pub async fn list_employees(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<Value>, StatusCode> {
-    let employees = state.employees.read().await;
     let auth_user = AuthenticatedUser {
         id: claims.sub,
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
 
-    if auth_user.is_manager() {
-        // Manager sees all
-        Ok(Json(json!(employees.values().collect::<Vec<_>>())))
-    } else {
-        // Others see public data
-        let public_data: Vec<EmployeePublic> = employees
-            .values()
-            .cloned()
-            .map(|e| e.into())
-            .collect();
-        Ok(Json(json!(public_data)))
+    // Only managers can view employee directory
+    if !auth_user.is_manager() {
+        return Err(StatusCode::FORBIDDEN);
     }
+
+    let employees = state.employees.read().await;
+    Ok(Json(json!(employees.values().collect::<Vec<_>>())))
 }
 
 pub async fn create_feedback(

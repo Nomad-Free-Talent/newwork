@@ -204,9 +204,11 @@ export default function DataItems() {
       <div className="navbar">
         <h2>Data Items Management</h2>
         <div className="navbar-actions">
-          <button className="btn-link" onClick={() => navigate('/employees')}>
-            Employee Directory
-          </button>
+          {user?.role === 'manager' && (
+            <button className="btn-link" onClick={() => navigate('/employees')}>
+              Employee Directory
+            </button>
+          )}
           {(user?.role === 'manager' || user?.role === 'employee') && (
             <button className="btn-link" onClick={() => navigate('/absences')}>
               {user?.role === 'manager' ? 'Absence Management' : 'My Absences'}
