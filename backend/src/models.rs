@@ -45,10 +45,10 @@ impl From<Employee> for EmployeePublic {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
     pub id: String,
+    pub name: String,
     pub email: String,
     pub password_hash: String,
     pub role: String, // "manager", "employee", "coworker"
-    pub employee_id: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -66,9 +66,17 @@ pub struct LoginResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UserInfo {
     pub id: String,
+    pub name: String,
     pub email: String,
     pub role: String,
-    pub employee_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateUserRequest {
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub role: String, // "manager", "employee", "coworker"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

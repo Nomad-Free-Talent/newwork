@@ -156,11 +156,9 @@ export default function AbsenceRequest() {
       <div className="navbar">
         <h2>{isManager ? 'Absence Management' : 'My Absence Requests'}</h2>
         <div className="navbar-actions">
-          {user?.role === 'manager' && (
-            <button className="btn-link" onClick={() => navigate('/employees')}>
-              Employee Directory
-            </button>
-          )}
+          <button className="btn-link" onClick={() => navigate('/employees')}>
+            Employee Directory
+          </button>
           <button className="btn-link" onClick={() => navigate('/data-items')}>
             Data Items
           </button>

@@ -32,26 +32,26 @@ async fn seed_default_users(state: &AppState) {
     
     let user1 = User {
         id: "1".to_string(),
+        name: "John Manager".to_string(),
         email: "manager@newwork.com".to_string(),
         password_hash: password_hash.clone(),
         role: "manager".to_string(),
-        employee_id: Some("1".to_string()),
     };
     
     let user2 = User {
         id: "2".to_string(),
+        name: "Jane Employee".to_string(),
         email: "employee@newwork.com".to_string(),
         password_hash: password_hash.clone(),
         role: "employee".to_string(),
-        employee_id: Some("2".to_string()),
     };
     
     let user3 = User {
         id: "3".to_string(),
+        name: "Bob Co-worker".to_string(),
         email: "coworker@newwork.com".to_string(),
         password_hash,
         role: "coworker".to_string(),
-        employee_id: None,
     };
     
     users.insert(user1.email.clone(), user1);

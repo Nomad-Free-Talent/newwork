@@ -18,7 +18,7 @@ export default function EmployeeProfile() {
   const [polishFeedback, setPolishFeedback] = useState(false)
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
 
-  const canViewAll = user?.role === 'manager' || (user?.role === 'employee' && user?.employee_id === id)
+  const canViewAll = user?.role === 'manager' || (user?.role === 'employee' && employee?.email === user?.email)
   const canEdit = canViewAll
   const canLeaveFeedback = user?.role === 'coworker' || user?.role === 'employee'
 
@@ -100,16 +100,12 @@ export default function EmployeeProfile() {
       <div className="navbar">
         <h2>Employee Profile</h2>
         <div className="navbar-actions">
-          {user?.role === 'manager' && (
-            <button className="btn-link" onClick={() => navigate('/employees')}>
-              Back to List
-            </button>
-          )}
-          {(user?.role === 'manager' || user?.role === 'employee') && (
-            <button className="btn-link" onClick={() => navigate('/absences')}>
-              {user?.role === 'manager' ? 'Absence Management' : 'My Absences'}
-            </button>
-          )}
+          <button className="btn-link" onClick={() => navigate('/employees')}>
+            Back to List
+          </button>
+          <button className="btn-link" onClick={() => navigate('/absences')}>
+            Absence Management
+          </button>
           <button className="btn-link" onClick={() => navigate('/data-items')}>
             Data Items
           </button>

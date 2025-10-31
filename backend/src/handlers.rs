@@ -36,9 +36,9 @@ pub async fn login(
         token,
         user: UserInfo {
             id: user.id.clone(),
+            name: user.name.clone(),
             email: user.email.clone(),
             role: user.role.clone(),
-            employee_id: user.employee_id.clone(),
         },
     }))
 }
@@ -242,13 +242,14 @@ pub async fn create_absence_request(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    let users = state.users.read().await;
-    let user = users
-        .get(&claims.email)
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
-    let employee_id = user.employee_id.clone()
+    // Find employee by matching email
+    let employees = state.employees.read().await;
+    let employee = employees
+        .values()
+        .find(|e| e.email == claims.email)
         .ok_or(StatusCode::BAD_REQUEST)?;
+    let employee_id = employee.id.clone();
+    drop(employees);
 
     let absence = AbsenceRequest {
         id: Uuid::new_v4().to_string(),
@@ -281,13 +282,14 @@ pub async fn get_my_absences(
         return Err(StatusCode::FORBIDDEN);
     }
 
-    let users = state.users.read().await;
-    let user = users
-        .get(&claims.email)
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
-    let employee_id = user.employee_id.clone()
+    // Find employee by matching email
+    let employees = state.employees.read().await;
+    let employee = employees
+        .values()
+        .find(|e| e.email == claims.email)
         .ok_or(StatusCode::BAD_REQUEST)?;
+    let employee_id = employee.id.clone();
+    drop(employees);
 
     let absences = state.absences.read().await;
     let my_absences: Vec<&AbsenceRequest> = absences
@@ -375,13 +377,67 @@ pub async fn list_users(
         .values()
         .map(|u| UserInfo {
             id: u.id.clone(),
+            name: u.name.clone(),
             email: u.email.clone(),
             role: u.role.clone(),
-            employee_id: u.employee_id.clone(),
         })
         .collect();
 
     Ok(Json(json!(user_info)))
+}
+
+pub async fn create_user(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Json(create_req): Json<CreateUserRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    // Only managers can create users
+    if !auth_user.is_manager() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Validate role
+    if !["manager", "employee", "coworker"].contains(&create_req.role.as_str()) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    // Check if user with this email already exists
+    let users = state.users.read().await;
+    if users.contains_key(&create_req.email) {
+        return Err(StatusCode::CONFLICT);
+    }
+    drop(users);
+
+    // Hash password
+    let password_hash = bcrypt::hash(&create_req.password, 12)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    // Generate user ID
+    let user_id = uuid::Uuid::new_v4().to_string();
+
+    let new_user = User {
+        id: user_id.clone(),
+        name: create_req.name.clone(),
+        email: create_req.email.clone(),
+        password_hash,
+        role: create_req.role.clone(),
+    };
+
+    let mut users = state.users.write().await;
+    users.insert(create_req.email.clone(), new_user.clone());
+
+    Ok(Json(json!(UserInfo {
+        id: user_id,
+        name: create_req.name,
+        email: create_req.email,
+        role: create_req.role,
+    })))
 }
 
 // Data Items handlers with access control
