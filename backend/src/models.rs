@@ -71,7 +71,7 @@ pub struct UserInfo {
     pub employee_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Feedback {
     pub id: String,
     pub employee_id: String,
@@ -88,7 +88,7 @@ pub struct CreateFeedbackRequest {
     pub polish: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbsenceRequest {
     pub id: String,
     pub employee_id: String,

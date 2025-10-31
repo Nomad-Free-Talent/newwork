@@ -1,5 +1,5 @@
 use axum::{
-    middleware,
+    middleware::from_fn,
     routing::{get, post, put},
     Router,
 };
@@ -16,7 +16,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/feedback", post(create_feedback))
         .route("/absences", post(create_absence_request))
         .route("/absences/me", get(get_my_absences))
-        .layer(middleware::from_fn(auth_middleware));
+        .layer(from_fn(auth_middleware));
 
     Router::new()
         .route("/auth/login", post(login))

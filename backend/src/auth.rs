@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 const JWT_SECRET: &[u8] = b"your-secret-key-change-in-production";
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String, // user id
     pub email: String,
