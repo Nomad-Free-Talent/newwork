@@ -16,6 +16,7 @@ pub fn create_router() -> Router<AppState> {
         .route("/feedback", post(create_feedback))
         .route("/absences", post(create_absence_request))
         .route("/absences/me", get(get_my_absences))
+        .route("/users", get(list_users))
         .route("/data-items", get(list_data_items))
         .route("/data-items", post(create_data_item))
         .route("/data-items/:id", get(get_data_item))

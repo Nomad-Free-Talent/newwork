@@ -17,8 +17,9 @@ export default function DataItems() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    owner: 'employee',
+    owner_id: null,
   })
+  const [users, setUsers] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
   const canCreate = user?.role === 'manager' || user?.role === 'employee'
@@ -27,8 +28,35 @@ export default function DataItems() {
   const isReadOnly = user?.role === 'coworker'
 
   useEffect(() => {
+    // Fetch users for owner info display (managers and co-workers can fetch all users)
+    if (user?.role === 'manager' || user?.role === 'coworker') {
+      fetchUsers()
+    } else if (user) {
+      // For employees, just add current user
+      setUsers([user])
+    }
+    
+    // Fetch data items
     fetchDataItems()
-  }, [])
+  }, [user])
+
+  const fetchUsers = async () => {
+    try {
+      const response = await api.get('/users')
+      // Always include current user in the list
+      const allUsers = response.data
+      if (user && !allUsers.find(u => u.id === user.id)) {
+        allUsers.push(user)
+      }
+      setUsers(allUsers)
+    } catch (err) {
+      console.error('Failed to load users:', err)
+      // Fallback: use current user
+      if (user) {
+        setUsers([user])
+      }
+    }
+  }
 
   const fetchDataItems = async () => {
     try {
@@ -37,7 +65,7 @@ export default function DataItems() {
       const filtered = response.data.filter(item => {
         if (!item.is_deleted) return true
         // Show deleted items only to managers or if employee owns them
-        return user?.role === 'manager' || (user?.role === 'employee' && item.owner === 'employee')
+        return user?.role === 'manager' || (user?.role === 'employee' && item.owner_id === user?.id)
       })
       setDataItems(filtered)
     } catch (err) {
@@ -54,9 +82,14 @@ export default function DataItems() {
     setSubmitting(true)
 
     try {
-      await api.post('/data-items', formData)
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        owner_id: user?.role === 'manager' ? formData.owner_id || user.id : user.id,
+      }
+      await api.post('/data-items', payload)
       setSuccess('Data item created successfully!')
-      setFormData({ title: '', description: '', owner: 'employee' })
+      setFormData({ title: '', description: '', owner_id: null })
       setShowForm(false)
       fetchDataItems()
     } catch (err) {
@@ -68,7 +101,7 @@ export default function DataItems() {
 
   const handleEdit = (item) => {
     // Check if user can edit this item
-    if (user?.role === 'employee' && item.owner !== 'employee') {
+    if (user?.role === 'employee' && item.owner_id !== user.id) {
       setError('You can only edit your own data items')
       return
     }
@@ -80,7 +113,7 @@ export default function DataItems() {
     setFormData({
       title: item.title,
       description: item.description,
-      owner: item.owner,
+      owner_id: item.owner_id,
     })
     setShowForm(true)
   }
@@ -98,7 +131,7 @@ export default function DataItems() {
       })
       setSuccess('Data item updated successfully!')
       setEditingItem(null)
-      setFormData({ title: '', description: '', owner: 'employee' })
+      setFormData({ title: '', description: '', owner_id: null })
       setShowForm(false)
       fetchDataItems()
     } catch (err) {
@@ -138,20 +171,27 @@ export default function DataItems() {
   const handleCancel = () => {
     setShowForm(false)
     setEditingItem(null)
-    setFormData({ title: '', description: '', owner: 'employee' })
+    setFormData({ title: '', description: '', owner_id: null })
     setError('')
   }
 
-  const getOwnerBadgeClass = (owner) => {
-    switch (owner) {
-      case 'manager':
-        return { bg: '#d4edda', color: '#155724', label: 'Manager' }
-      case 'coworker':
-        return { bg: '#cfe2ff', color: '#084298', label: 'Co-worker' }
-      case 'employee':
-        return { bg: '#fff3cd', color: '#856404', label: 'Employee' }
-      default:
-        return { bg: '#e0e0e0', color: '#333', label: owner }
+  const getOwnerInfo = (ownerId) => {
+    const ownerUser = users.find(u => u.id === ownerId) || 
+                     (ownerId === user?.id ? user : null)
+    if (!ownerUser) {
+      return { email: 'Unknown', role: 'unknown', bg: '#e0e0e0', color: '#333' }
+    }
+    
+    const roleColors = {
+      manager: { bg: '#d4edda', color: '#155724' },
+      coworker: { bg: '#cfe2ff', color: '#084298' },
+      employee: { bg: '#fff3cd', color: '#856404' },
+    }
+    
+    return {
+      email: ownerUser.email,
+      role: ownerUser.role,
+      ...roleColors[ownerUser.role] || { bg: '#e0e0e0', color: '#333' }
     }
   }
 
@@ -221,22 +261,24 @@ export default function DataItems() {
 
             {user?.role === 'manager' && !editingItem && (
               <div className="form-group">
-                <label htmlFor="owner">Owner</label>
+                <label htmlFor="owner_id">Owner</label>
                 <select
-                  id="owner"
-                  value={formData.owner}
-                  onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
+                  id="owner_id"
+                  value={formData.owner_id || user.id}
+                  onChange={(e) => setFormData({ ...formData, owner_id: e.target.value })}
                   required
                 >
-                  <option value="manager">Manager</option>
-                  <option value="coworker">Co-worker</option>
-                  <option value="employee">Employee</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.email} ({u.role})
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
 
-            {user?.role === 'employee' && !editingItem && (
-              <input type="hidden" value="employee" />
+            {user?.role === 'employee' && (
+              <input type="hidden" value={user.id} />
             )}
 
             <div style={{ display: 'flex', gap: '1rem' }}>
@@ -257,9 +299,9 @@ export default function DataItems() {
         ) : (
           <div className="grid">
             {dataItems.map((item) => {
-              const badge = getOwnerBadgeClass(item.owner)
-              const canEditThis = canEdit && (user?.role === 'manager' || item.owner === 'employee')
-              const canDeleteThis = canDelete && (user?.role === 'manager' || item.owner === 'employee')
+              const ownerInfo = getOwnerInfo(item.owner_id)
+              const canEditThis = canEdit && (user?.role === 'manager' || item.owner_id === user?.id)
+              const canDeleteThis = canDelete && (user?.role === 'manager' || item.owner_id === user?.id)
 
               return (
                 <div
@@ -283,13 +325,18 @@ export default function DataItems() {
                           borderRadius: '4px',
                           fontSize: '0.75rem',
                           fontWeight: '600',
-                          background: badge.bg,
-                          color: badge.color,
+                          background: ownerInfo.bg,
+                          color: ownerInfo.color,
                           display: 'inline-block',
                           marginBottom: '0.5rem',
+                          marginRight: '0.5rem',
                         }}
+                        title={ownerInfo.email}
                       >
-                        {badge.label}
+                        {ownerInfo.role.charAt(0).toUpperCase() + ownerInfo.role.slice(1)}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#666' }}>
+                        {ownerInfo.email}
                       </span>
                       {item.is_deleted && (
                         <span

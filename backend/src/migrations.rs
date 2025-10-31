@@ -117,12 +117,12 @@ async fn seed_default_data_items(state: &AppState) {
     
     let now = Utc::now();
     
-    // Sensitive data examples
+    // Manager-owned data (user ID: "1")
     let sensitive1 = DataItem {
         id: "data-1".to_string(),
         title: "Sensitive Financial Report".to_string(),
         description: "Q4 financial analysis with revenue projections and budget allocations".to_string(),
-        owner: "manager".to_string(),
+        owner_id: "1".to_string(), // manager@newwork.com
         is_deleted: false,
         created_at: now - chrono::Duration::days(30),
         updated_at: now - chrono::Duration::days(5),
@@ -132,18 +132,18 @@ async fn seed_default_data_items(state: &AppState) {
         id: "data-2".to_string(),
         title: "Employee Salary Data".to_string(),
         description: "Confidential salary information for engineering team members".to_string(),
-        owner: "manager".to_string(),
+        owner_id: "1".to_string(), // manager@newwork.com
         is_deleted: false,
         created_at: now - chrono::Duration::days(20),
         updated_at: now - chrono::Duration::days(3),
     };
     
-    // Non-sensitive data examples
+    // Co-worker-owned data (user ID: "3")
     let nonsensitive1 = DataItem {
         id: "data-3".to_string(),
         title: "Team Meeting Notes".to_string(),
         description: "Weekly standup notes and action items from engineering team meetings".to_string(),
-        owner: "coworker".to_string(),
+        owner_id: "3".to_string(), // coworker@newwork.com
         is_deleted: false,
         created_at: now - chrono::Duration::days(10),
         updated_at: now - chrono::Duration::days(2),
@@ -153,18 +153,18 @@ async fn seed_default_data_items(state: &AppState) {
         id: "data-4".to_string(),
         title: "Project Documentation".to_string(),
         description: "Public project documentation and technical specifications".to_string(),
-        owner: "coworker".to_string(),
+        owner_id: "3".to_string(), // coworker@newwork.com
         is_deleted: false,
         created_at: now - chrono::Duration::days(15),
         updated_at: now - chrono::Duration::days(1),
     };
     
-    // Employee-owned data
+    // Employee-owned data (user ID: "2")
     let employee_data1 = DataItem {
         id: "data-5".to_string(),
         title: "Personal Task List".to_string(),
         description: "My personal task list and work items for the current sprint".to_string(),
-        owner: "employee".to_string(),
+        owner_id: "2".to_string(), // employee@newwork.com
         is_deleted: false,
         created_at: now - chrono::Duration::days(7),
         updated_at: now - chrono::Duration::hours(12),
@@ -174,18 +174,18 @@ async fn seed_default_data_items(state: &AppState) {
         id: "data-6".to_string(),
         title: "Learning Notes".to_string(),
         description: "Personal notes from learning sessions and training materials".to_string(),
-        owner: "employee".to_string(),
+        owner_id: "2".to_string(), // employee@newwork.com
         is_deleted: false,
         created_at: now - chrono::Duration::days(5),
         updated_at: now - chrono::Duration::hours(6),
     };
     
-    // Deleted item example
+    // Deleted item example (employee-owned)
     let deleted_item = DataItem {
         id: "data-7".to_string(),
         title: "Old Project Plan".to_string(),
         description: "Outdated project plan that has been replaced".to_string(),
-        owner: "employee".to_string(),
+        owner_id: "2".to_string(), // employee@newwork.com
         is_deleted: true,
         created_at: now - chrono::Duration::days(60),
         updated_at: now - chrono::Duration::days(30),

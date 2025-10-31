@@ -302,6 +302,36 @@ pub async fn get_my_absences(
     Ok(Json(json!(my_absences)))
 }
 
+pub async fn list_users(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+) -> Result<Json<Value>, StatusCode> {
+    // Managers and co-workers can list users (co-workers need it to see owner info)
+    let auth_user = AuthenticatedUser {
+        id: claims.sub,
+        email: claims.email.clone(),
+        role: claims.role.clone(),
+    };
+
+    if !auth_user.is_manager() && !auth_user.is_coworker() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let users = state.users.read().await;
+    // Return only user info (not password hashes)
+    let user_info: Vec<UserInfo> = users
+        .values()
+        .map(|u| UserInfo {
+            id: u.id.clone(),
+            email: u.email.clone(),
+            role: u.role.clone(),
+            employee_id: u.employee_id.clone(),
+        })
+        .collect();
+
+    Ok(Json(json!(user_info)))
+}
+
 // Data Items handlers with access control
 
 pub async fn list_data_items(
@@ -319,10 +349,10 @@ pub async fn list_data_items(
         // Manager and co-worker can see all (including deleted)
         data_items.values().collect()
     } else if auth_user.is_employee() {
-        // Employee can only see their own data
+        // Employee can only see their own data (by user ID)
         data_items
             .values()
-            .filter(|item| item.owner == "employee")
+            .filter(|item| item.owner_id == auth_user.id)
             .collect()
     } else {
         return Err(StatusCode::FORBIDDEN);
@@ -351,7 +381,7 @@ pub async fn get_data_item(
     let can_read = if auth_user.is_manager() || auth_user.is_coworker() {
         true // Can read all
     } else if auth_user.is_employee() {
-        item.owner == "employee" // Can only read own
+        item.owner_id == auth_user.id // Can only read own (by user ID)
     } else {
         false
     };
@@ -369,24 +399,29 @@ pub async fn create_data_item(
     Json(create_req): Json<CreateDataItemRequest>,
 ) -> Result<Json<Value>, StatusCode> {
     let auth_user = AuthenticatedUser {
-        id: claims.sub,
+        id: claims.sub.clone(),
         email: claims.email.clone(),
         role: claims.role.clone(),
     };
 
-    // Check write permissions
-    let can_write = if auth_user.is_manager() {
-        true // Manager can create any data
+    // Determine owner_id
+    let owner_id = if auth_user.is_manager() {
+        // Manager can assign to any user, or defaults to themselves
+        create_req.owner_id.unwrap_or_else(|| claims.sub.clone())
     } else if auth_user.is_employee() {
-        create_req.owner == "employee" // Employee can only create own data
+        // Employee can only create for themselves
+        claims.sub.clone()
     } else if auth_user.is_coworker() {
-        false // Co-worker cannot create (read-only)
+        // Co-worker cannot create (read-only)
+        return Err(StatusCode::FORBIDDEN);
     } else {
-        false
+        return Err(StatusCode::FORBIDDEN);
     };
 
-    if !can_write {
-        return Err(StatusCode::FORBIDDEN);
+    // Validate that the owner_id exists
+    let users = state.users.read().await;
+    if !users.values().any(|u| u.id == owner_id) {
+        return Err(StatusCode::BAD_REQUEST);
     }
 
     let now = chrono::Utc::now();
@@ -394,7 +429,7 @@ pub async fn create_data_item(
         id: uuid::Uuid::new_v4().to_string(),
         title: create_req.title,
         description: create_req.description,
-        owner: create_req.owner,
+        owner_id,
         is_deleted: false,
         created_at: now,
         updated_at: now,
@@ -427,7 +462,7 @@ pub async fn update_data_item(
     let can_write = if auth_user.is_manager() {
         true // Manager can update all
     } else if auth_user.is_employee() {
-        item.owner == "employee" // Employee can only update own
+        item.owner_id == auth_user.id // Employee can only update own (by user ID)
     } else if auth_user.is_coworker() {
         false // Co-worker cannot update (read-only)
     } else {
@@ -473,7 +508,7 @@ pub async fn delete_data_item(
     let can_delete = if auth_user.is_manager() {
         true // Manager can delete all
     } else if auth_user.is_employee() {
-        item.owner == "employee" // Employee can only delete own
+        item.owner_id == auth_user.id // Employee can only delete own (by user ID)
     } else if auth_user.is_coworker() {
         false // Co-worker cannot delete (read-only)
     } else {

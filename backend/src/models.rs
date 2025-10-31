@@ -130,7 +130,7 @@ pub struct DataItem {
     pub id: String,
     pub title: String,
     pub description: String,
-    pub owner: String, // "manager", "coworker", "employee"
+    pub owner_id: String, // User ID of the owner
     pub is_deleted: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -140,7 +140,7 @@ pub struct DataItem {
 pub struct CreateDataItemRequest {
     pub title: String,
     pub description: String,
-    pub owner: String,
+    pub owner_id: Option<String>, // Optional for managers to assign to others, required for employees (defaults to current user)
 }
 
 #[derive(Debug, Deserialize)]
